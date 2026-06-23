@@ -1735,7 +1735,19 @@
             if (dashType) {
             wsData.push(["จำนวนหน่วยงานที่ประเมิน", `${totalDepts} หน่วยงาน`]);
             wsData.push(["จำนวนผู้รับการประเมินรวม", `${totalPeople} คน/เหตุการณ์`]);
-            wsData.push(["หน่วยงานที่เข้าร่วม", records.map(r => r.department).join(", ")]);
+            wsData.push([]);
+            wsData.push(["สรุปหน่วยงานที่เข้าร่วมการประเมิน"]);
+            const deptSummaryMap = {};
+            records.forEach(r => {
+                const d = r.department || 'ไม่ระบุ';
+                if (!deptSummaryMap[d]) deptSummaryMap[d] = { department: d, count: 0, people: 0 };
+                deptSummaryMap[d].count += 1;
+                deptSummaryMap[d].people += (parseInt(r.numPeople) || 0);
+            });
+            const deptSummaryRows = Object.values(deptSummaryMap).sort((a, b) => a.department.localeCompare(b.department, 'th'));
+            wsData.push(["ลำดับ", "หน่วยงาน", "จำนวนการประเมิน (ครั้ง)", "ผู้รับประเมิน (คน/เหตุการณ์)"]);
+            deptSummaryRows.forEach((row, i) => wsData.push([i + 1, row.department, row.count, row.people]));
+            wsData.push([`รวมทั้งหมด (${deptSummaryRows.length} หน่วยงาน)`, "", deptSummaryRows.reduce((s, x) => s + x.count, 0), deptSummaryRows.reduce((s, x) => s + x.people, 0)]);
             wsData.push([]);
             wsData.push(["สรุปคะแนนรวมระดับโรงพยาบาล", ""]);
             wsData.push(["คะแนนเต็มรวม", grandSummary?.fullScore || 0]);
