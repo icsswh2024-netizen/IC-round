@@ -1724,12 +1724,15 @@
 
          // --- ฟังก์ชันเตรียมข้อมูลชุดเดียวกับ Excel สำหรับหน้า Hospital ---
          const getHospitalExcelData = (isForPDF = false) => {
-            if(!records || records.length === 0) return [];
+            const hasOverviewData = (crossTabStats && crossTabStats.deptList.length > 0) || (roleCrossTabStats && roleCrossTabStats.deptRoleList.length > 0);
+            if (dashType) { if(!records || records.length === 0) return []; }
+            else if (!hasOverviewData) return [];
             const wsData = [];
             wsData.push(["สรุปผลการประเมินตามมาตรฐานการควบคุมและป้องกันการติดเชื้อในโรงพยาบาล", "โรงพยาบาลศรีสังวรสุโขทัย"]);
             wsData.push([]);
             wsData.push(["วันที่/เวลาที่ออกรายงาน", new Date().toLocaleString('th-TH')]);
-            wsData.push(["ประเภทแบบประเมิน", dashType]);
+            wsData.push(["ประเภทแบบประเมิน", dashType || "ภาพรวมทุกมาตรฐาน"]);
+            if (dashType) {
             wsData.push(["จำนวนหน่วยงานที่ประเมิน", `${totalDepts} หน่วยงาน`]);
             wsData.push(["จำนวนผู้รับการประเมินรวม", `${totalPeople} คน/เหตุการณ์`]);
             wsData.push(["หน่วยงานที่เข้าร่วม", records.map(r => r.department).join(", ")]);
@@ -1771,6 +1774,7 @@
                 deptAverages.forEach(stat => {
                     wsData.push([stat.deptType, stat.department, `${stat.count} ครั้ง (${stat.peopleCount} คน)`, `${stat.avg}%`]);
                 });
+            }
             }
 
             if (crossTabStats && crossTabStats.deptList.length > 0) {
@@ -1857,7 +1861,7 @@
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.aoa_to_sheet(wsData);
             XLSX.utils.book_append_sheet(wb, ws, "ผลประเมินระดับโรงพยาบาล");
-            XLSX.writeFile(wb, `ผลประเมินรวมโรงพยาบาล_${dashType}_${new Date().getTime()}.xlsx`);
+            XLSX.writeFile(wb, `ผลประเมินรวมโรงพยาบาล_${dashType || 'ภาพรวมทุกมาตรฐาน'}_${new Date().getTime()}.xlsx`);
          };
 
          const handleGenerateHospitalPDF = () => {
@@ -1867,7 +1871,7 @@
             setPdfPreviewState({ 
                 isOpen: true, 
                 htmlContent: html, 
-                filename: `ผลประเมินรวมโรงพยาบาล_${dashType}_${new Date().getTime()}.pdf` 
+                filename: `ผลประเมินรวมโรงพยาบาล_${dashType || 'ภาพรวมทุกมาตรฐาน'}_${new Date().getTime()}.pdf`
             });
          };
 
@@ -2179,7 +2183,7 @@
                     </main>
                  </div>
                )}
-               {records.length > 0 && (
+               {(records.length > 0 || (!dashType && (crossTabStats.deptList.length > 0 || roleCrossTabStats.deptRoleList.length > 0))) && (
                   <div className="max-w-7xl mx-auto w-full px-4 mt-8 mb-10 print:hidden flex flex-wrap justify-end gap-4">
                      <button onClick={handleExportHospitalExcel} className="flex items-center justify-center gap-2 px-8 py-3.5 bg-[#8ab278] text-white rounded-xl font-bold text-lg hover:bg-[#729c60] transition-colors shadow-md hover:shadow-lg"><Download className="w-6 h-6" /> Export Excel</button>
                      <button onClick={handleGenerateHospitalPDF} disabled={isGeneratingPDF} className={`flex items-center justify-center gap-2 px-8 py-3.5 text-white rounded-xl font-bold text-lg transition-colors shadow-md hover:shadow-lg ${isGeneratingPDF ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#f1a164] hover:bg-[#de8f55]'}`}><Loader2 className={`w-6 h-6 animate-spin ${!isGeneratingPDF && 'hidden'}`} /><FileText className={`w-6 h-6 ${isGeneratingPDF && 'hidden'}`} /> แสดงตัวอย่าง PDF</button>
