@@ -1777,7 +1777,7 @@
             }
             }
 
-            if (crossTabStats && crossTabStats.deptList.length > 0) {
+            if (!dashType && crossTabStats && crossTabStats.deptList.length > 0) {
                 wsData.push([]);
                 wsData.push(["สรุปจำนวนผู้รับการประเมิน (คน/เหตุการณ์) แยกตามหน่วยงานและมาตรฐาน (ทุกประเภท)"]);
                 
@@ -1815,7 +1815,7 @@
                 wsData.push(totalRow);
             }
 
-            if (roleCrossTabStats && roleCrossTabStats.deptRoleList.length > 0) {
+            if (!dashType && roleCrossTabStats && roleCrossTabStats.deptRoleList.length > 0) {
                 wsData.push([]);
                 wsData.push(["สรุปจำนวนผู้รับการประเมิน (คน/เหตุการณ์) แยกตามหน่วยงาน, ตำแหน่ง และมาตรฐาน (เฉพาะมาตรฐาน 16-17)"]);
                 
