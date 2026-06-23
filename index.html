@@ -1412,7 +1412,7 @@
       };
 
       const HospitalSummaryView = () => {
-         const [dashType, setDashType] = useState(assessmentType || (dynamicChecklists && Object.keys(dynamicChecklists).length > 0 ? Object.keys(dynamicChecklists)[0] : ""));
+         const [dashType, setDashType] = useState(""); // เริ่มต้นที่ 'ไม่เลือก' (โหมดภาพรวมทุกมาตรฐาน) เสมอ
          const [filterYear, setFilterYear] = useState("all");
          const [filterStartMonth, setFilterStartMonth] = useState("all");
          const [filterEndMonth, setFilterEndMonth] = useState("all");
