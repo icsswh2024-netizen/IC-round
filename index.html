@@ -4,7 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>แบบประเมินและกำกับติดตามมาตรฐาน ICด้านการพยาบาล </title>
-  
+
+  <!-- Preconnect ลดเวลา handshake กับ CDN/ฟอนต์ (ช่วยบนมือถือ/เน็ตช้า) -->
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.tailwindcss.com">
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
@@ -18,15 +24,15 @@
   <!-- Babel standalone (ปักหมุดเวอร์ชัน 7.23.5 — ตัวที่ใช้ได้ชัวร์) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 
-  <!-- SheetJS สำหรับ Export Excel -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- SheetJS สำหรับ Export Excel (defer: โหลดเบื้องหลัง ไม่บล็อกการเปิดหน้า ใช้ตอนกด Export เท่านั้น) -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-  <!-- html2pdf สำหรับ Export PDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- html2pdf สำหรับ Export PDF (defer) -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-  <!-- html2canvas และ jsPDF สำหรับ Export ภาพลง PDF แบบ WYSIWYG 100% -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- html2canvas และ jsPDF สำหรับ Export ภาพลง PDF แบบ WYSIWYG 100% (defer) -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <style>
     body { font-family: 'TH Sarabun PSK', 'Sarabun', sans-serif; background-color: #ffffff; color: #32355c; }
