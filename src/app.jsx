@@ -840,7 +840,7 @@
         });
 
         // 2) แบ่งหน้า A4 โดยไม่ตัดกลางแถว (หน้าแรกเผื่อพื้นที่หัวกระดาษ)
-        const BUDGET_FIRST = 21, BUDGET_REST = 27;
+        const BUDGET_FIRST = 19, BUDGET_REST = 25;
         const pages = []; let cur = [], used = 0, budget = BUDGET_FIRST;
         items.forEach(r => {
           if (cur.length && used + r.w > budget) { pages.push(cur); cur = []; used = 0; budget = BUDGET_REST; }
@@ -907,37 +907,6 @@
         const iframe = blankFormIframeRef.current;
         if (!iframe || !iframe.contentWindow) return;
         try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) { console.error(e); }
-      };
-
-      const doBlankFormSavePDF = async () => {
-        const iframe = blankFormIframeRef.current;
-        if (!iframe || !iframe.contentWindow || !window.html2canvas || !window.jspdf) return;
-        setIsGeneratingPDF(true);
-        try {
-          const doc = iframe.contentWindow.document;
-          const pagesEls = doc.querySelectorAll('.pdf-page');
-          const { jsPDF } = window.jspdf;
-          const pdf = new jsPDF('p', 'mm', 'a4');
-          const pw = pdf.internal.pageSize.getWidth();
-          const ph = pdf.internal.pageSize.getHeight();
-          for (let i = 0; i < pagesEls.length; i++) {
-            if (i > 0) pdf.addPage();
-            const el = pagesEls[i];
-            const oShadow = el.style.boxShadow, oMargin = el.style.margin;
-            el.style.boxShadow = 'none'; el.style.margin = '0';
-            const canvas = await window.html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-            el.style.boxShadow = oShadow; el.style.margin = oMargin;
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const ratio = Math.min(pw / canvas.width, ph / canvas.height);
-            const w = canvas.width * ratio, h = canvas.height * ratio;
-            pdf.addImage(imgData, 'JPEG', (pw - w) / 2, 0, w, h);
-          }
-          pdf.save(`แบบฟอร์มเปล่า_${blankFormPreview.type || 'IC'}.pdf`);
-        } catch (err) {
-          console.error(err);
-          showPopup({ title: 'เกิดข้อผิดพลาด', message: 'บันทึก PDF ไม่สำเร็จ ลองใช้ปุ่ม "สั่งพิมพ์" แล้วเลือกปลายทางเป็น "บันทึกเป็น PDF" แทนได้ครับ', type: 'error' });
-        }
-        setIsGeneratingPDF(false);
       };
 
       const handleCompletePerson = (pIndex) => {
@@ -2808,19 +2777,16 @@
                  <div className="bg-white rounded-t-2xl max-w-4xl w-full mx-auto shadow-lg shrink-0 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
                     <h3 className="text-lg font-black text-[#32355c] flex items-center gap-2"><Printer className="w-6 h-6 text-[#16bba6]"/> พรีวิวแบบฟอร์มเปล่า — {blankFormPreview.type}</h3>
                     <div className="flex flex-wrap gap-2">
-                       <button onClick={doBlankFormSavePDF} disabled={isGeneratingPDF} className="px-4 py-2.5 rounded-xl font-bold text-white bg-[#f1a164] hover:bg-[#de8f55] transition-colors shadow-md flex items-center gap-2 disabled:opacity-50">
-                          {isGeneratingPDF ? <Loader2 className="w-5 h-5 animate-spin"/> : <Download className="w-5 h-5"/>} บันทึก PDF
+                       <button onClick={doBlankFormPrint} className="px-5 py-2.5 rounded-xl font-bold text-white bg-[#238885] hover:bg-[#16bba6] transition-colors shadow-md flex items-center gap-2">
+                          <Printer className="w-5 h-5"/> พิมพ์ / บันทึกเป็น PDF
                        </button>
-                       <button onClick={doBlankFormPrint} disabled={isGeneratingPDF} className="px-4 py-2.5 rounded-xl font-bold text-white bg-[#238885] hover:bg-[#16bba6] transition-colors shadow-md flex items-center gap-2 disabled:opacity-50">
-                          <Printer className="w-5 h-5"/> สั่งพิมพ์
-                       </button>
-                       <button onClick={() => setBlankFormPreview({ isOpen: false, type: '', html: '' })} disabled={isGeneratingPDF} className="px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50">ปิด</button>
+                       <button onClick={() => setBlankFormPreview({ isOpen: false, type: '', html: '' })} className="px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-gray-100 hover:bg-gray-200 transition-colors">ปิด</button>
                     </div>
                  </div>
                  <div className="flex-1 w-full max-w-4xl mx-auto bg-slate-200 rounded-b-2xl overflow-hidden">
                     <iframe ref={blankFormIframeRef} srcDoc={blankFormPreview.html} title="พรีวิวแบบฟอร์มเปล่า" className="w-full h-full bg-white" style={{ border: 'none' }} />
                  </div>
-                 <p className="text-center text-xs text-slate-300 mt-2 shrink-0 px-4">บนมือถือ/แท็บเล็ต ถ้า "สั่งพิมพ์" ใช้ไม่ได้ ให้กด "บันทึก PDF" เพื่อดาวน์โหลดไฟล์ไว้พิมพ์ทีหลัง</p>
+                 <p className="text-center text-xs text-slate-300 mt-2 shrink-0 px-4">กด "พิมพ์ / บันทึกเป็น PDF" → ในหน้าต่างที่เปิดขึ้น เลือกปลายทางเป็น <b>เครื่องพิมพ์</b> เพื่อพิมพ์ หรือ <b>"บันทึกเป็น PDF" (Save as PDF)</b> เพื่อดาวน์โหลดไฟล์ที่หน้าตาตรงกับพรีวิวทุกจุด</p>
               </div>
            )}
 

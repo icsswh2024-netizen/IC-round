@@ -1514,8 +1514,8 @@ function App() {
     });
 
     // 2) แบ่งหน้า A4 โดยไม่ตัดกลางแถว (หน้าแรกเผื่อพื้นที่หัวกระดาษ)
-    const BUDGET_FIRST = 21,
-      BUDGET_REST = 27;
+    const BUDGET_FIRST = 19,
+      BUDGET_REST = 25;
     const pages = [];
     let cur = [],
       used = 0,
@@ -1594,50 +1594,6 @@ function App() {
     } catch (e) {
       console.error(e);
     }
-  };
-  const doBlankFormSavePDF = async () => {
-    const iframe = blankFormIframeRef.current;
-    if (!iframe || !iframe.contentWindow || !window.html2canvas || !window.jspdf) return;
-    setIsGeneratingPDF(true);
-    try {
-      const doc = iframe.contentWindow.document;
-      const pagesEls = doc.querySelectorAll('.pdf-page');
-      const {
-        jsPDF
-      } = window.jspdf;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pw = pdf.internal.pageSize.getWidth();
-      const ph = pdf.internal.pageSize.getHeight();
-      for (let i = 0; i < pagesEls.length; i++) {
-        if (i > 0) pdf.addPage();
-        const el = pagesEls[i];
-        const oShadow = el.style.boxShadow,
-          oMargin = el.style.margin;
-        el.style.boxShadow = 'none';
-        el.style.margin = '0';
-        const canvas = await window.html2canvas(el, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: '#ffffff'
-        });
-        el.style.boxShadow = oShadow;
-        el.style.margin = oMargin;
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const ratio = Math.min(pw / canvas.width, ph / canvas.height);
-        const w = canvas.width * ratio,
-          h = canvas.height * ratio;
-        pdf.addImage(imgData, 'JPEG', (pw - w) / 2, 0, w, h);
-      }
-      pdf.save(`แบบฟอร์มเปล่า_${blankFormPreview.type || 'IC'}.pdf`);
-    } catch (err) {
-      console.error(err);
-      showPopup({
-        title: 'เกิดข้อผิดพลาด',
-        message: 'บันทึก PDF ไม่สำเร็จ ลองใช้ปุ่ม "สั่งพิมพ์" แล้วเลือกปลายทางเป็น "บันทึกเป็น PDF" แทนได้ครับ',
-        type: 'error'
-      });
-    }
-    setIsGeneratingPDF(false);
   };
   const handleCompletePerson = pIndex => {
     const pAnswers = answers[pIndex] || {};
@@ -4605,27 +4561,17 @@ function App() {
   }), " พรีวิวแบบฟอร์มเปล่า — ", blankFormPreview.type), /*#__PURE__*/React.createElement("div", {
     className: "flex flex-wrap gap-2"
   }, /*#__PURE__*/React.createElement("button", {
-    onClick: doBlankFormSavePDF,
-    disabled: isGeneratingPDF,
-    className: "px-4 py-2.5 rounded-xl font-bold text-white bg-[#f1a164] hover:bg-[#de8f55] transition-colors shadow-md flex items-center gap-2 disabled:opacity-50"
-  }, isGeneratingPDF ? /*#__PURE__*/React.createElement(Loader2, {
-    className: "w-5 h-5 animate-spin"
-  }) : /*#__PURE__*/React.createElement(Download, {
-    className: "w-5 h-5"
-  }), " บันทึก PDF"), /*#__PURE__*/React.createElement("button", {
     onClick: doBlankFormPrint,
-    disabled: isGeneratingPDF,
-    className: "px-4 py-2.5 rounded-xl font-bold text-white bg-[#238885] hover:bg-[#16bba6] transition-colors shadow-md flex items-center gap-2 disabled:opacity-50"
+    className: "px-5 py-2.5 rounded-xl font-bold text-white bg-[#238885] hover:bg-[#16bba6] transition-colors shadow-md flex items-center gap-2"
   }, /*#__PURE__*/React.createElement(Printer, {
     className: "w-5 h-5"
-  }), " สั่งพิมพ์"), /*#__PURE__*/React.createElement("button", {
+  }), " พิมพ์ / บันทึกเป็น PDF"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setBlankFormPreview({
       isOpen: false,
       type: '',
       html: ''
     }),
-    disabled: isGeneratingPDF,
-    className: "px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
+    className: "px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-gray-100 hover:bg-gray-200 transition-colors"
   }, "ปิด"))), /*#__PURE__*/React.createElement("div", {
     className: "flex-1 w-full max-w-4xl mx-auto bg-slate-200 rounded-b-2xl overflow-hidden"
   }, /*#__PURE__*/React.createElement("iframe", {
@@ -4638,7 +4584,7 @@ function App() {
     }
   })), /*#__PURE__*/React.createElement("p", {
     className: "text-center text-xs text-slate-300 mt-2 shrink-0 px-4"
-  }, "บนมือถือ/แท็บเล็ต ถ้า \"สั่งพิมพ์\" ใช้ไม่ได้ ให้กด \"บันทึก PDF\" เพื่อดาวน์โหลดไฟล์ไว้พิมพ์ทีหลัง")), isGeneratingPDF && !pdfPreviewState.isOpen && /*#__PURE__*/React.createElement("div", {
+  }, "กด \"พิมพ์ / บันทึกเป็น PDF\" → ในหน้าต่างที่เปิดขึ้น เลือกปลายทางเป็น ", /*#__PURE__*/React.createElement("b", null, "เครื่องพิมพ์"), " เพื่อพิมพ์ หรือ ", /*#__PURE__*/React.createElement("b", null, "\"บันทึกเป็น PDF\" (Save as PDF)"), " เพื่อดาวน์โหลดไฟล์ที่หน้าตาตรงกับพรีวิวทุกจุด")), isGeneratingPDF && !pdfPreviewState.isOpen && /*#__PURE__*/React.createElement("div", {
     className: "fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-white/95 backdrop-blur-sm"
   }, /*#__PURE__*/React.createElement(Loader2, {
     className: "w-20 h-20 animate-spin text-[#16bba6] mb-6"
