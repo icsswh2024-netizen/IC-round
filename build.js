@@ -21,7 +21,9 @@ const SRC = path.join(ROOT, 'src', 'app.jsx');
 const IDX = path.join(ROOT, 'index.html');
 
 const jsx = fs.readFileSync(SRC, 'utf8');
-const compiled = Babel.transform(jsx, { presets: ['react'] }).code;
+// ใช้ classic runtime (React.createElement / React.Fragment) ให้เข้ากับ React แบบ UMD (global window.React)
+// ห้ามใช้ automatic runtime เพราะจะได้ import ... from "react/jsx-runtime" ซึ่งใช้กับ <script> ธรรมดาไม่ได้
+const compiled = Babel.transform(jsx, { presets: [['react', { runtime: 'classic' }]] }).code;
 
 let html = fs.readFileSync(IDX, 'utf8');
 const startMarker = '<!-- APP:START';
