@@ -1493,48 +1493,87 @@ function App() {
     const sections = dynamicChecklists && dynamicChecklists[type] || [];
     const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const box = '<span style="display:inline-block;width:15px;height:15px;border:1.5px solid #333;border-radius:3px;"></span>';
-    let rows = '';
+
+    // 1) แตกเนื้อหาเป็นรายการแถว พร้อมประเมิน "น้ำหนักความสูง" (แถวข้อความยาวจะกินหลายบรรทัด)
+    const items = [];
     sections.forEach(section => {
-      rows += `<tr><td colspan="5" style="background:#eef2f7;font-weight:bold;font-size:22px;padding:6px 8px;border:1px solid #333;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${esc(section.title || '')}</td></tr>`;
-      (section.items || []).forEach(item => {
-        rows += `<tr>
-              <td style="text-align:center;border:1px solid #333;padding:5px 4px;white-space:nowrap;">${esc(item.id)}</td>
-              <td style="border:1px solid #333;padding:5px 8px;">${esc(item.text)}</td>
-              <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${box}</td>
-              <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${box}</td>
-              <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${box}</td>
-            </tr>`;
+      items.push({
+        kind: 'section',
+        title: section.title || '',
+        w: 1
+      });
+      (section.items || []).forEach(it => {
+        const len = String(it.text || '').length;
+        items.push({
+          kind: 'item',
+          id: it.id,
+          text: it.text,
+          w: 1 + Math.floor(len / 48)
+        });
       });
     });
+
+    // 2) แบ่งหน้า A4 โดยไม่ตัดกลางแถว (หน้าแรกเผื่อพื้นที่หัวกระดาษ)
+    const BUDGET_FIRST = 21,
+      BUDGET_REST = 27;
+    const pages = [];
+    let cur = [],
+      used = 0,
+      budget = BUDGET_FIRST;
+    items.forEach(r => {
+      if (cur.length && used + r.w > budget) {
+        pages.push(cur);
+        cur = [];
+        used = 0;
+        budget = BUDGET_REST;
+      }
+      cur.push(r);
+      used += r.w;
+    });
+    if (cur.length) pages.push(cur);
+    if (pages.length === 0) pages.push([]);
+    const thead = `<thead><tr>
+              <th style="width:8%;">ข้อ</th><th>รายการประเมิน</th>
+              <th style="width:13%;">ปฏิบัติ</th><th style="width:13%;">ไม่ปฏิบัติ</th><th style="width:10%;">NA</th>
+            </tr></thead>`;
+    const renderRows = rows => rows.map(r => r.kind === 'section' ? `<tr><td colspan="5" class="sec">${esc(r.title)}</td></tr>` : `<tr><td class="idc">${esc(r.id)}</td><td>${esc(r.text)}</td><td class="ck">${box}</td><td class="ck">${box}</td><td class="ck">${box}</td></tr>`).join('');
+    const header = `<h1>แบบประเมินและกำกับติดตามมาตรฐาน IC ด้านการพยาบาล</h1>
+          <div class="sub">โรงพยาบาลศรีสังวรสุโขทัย &nbsp;|&nbsp; แบบประเมิน: <b>${esc(type)}</b></div>
+          <div class="info">
+            หน่วยงาน <span class="fill" style="min-width:180px;"></span> &nbsp;&nbsp; ประเภท <span class="fill" style="min-width:90px;"></span><br>
+            ผู้ประเมิน <span class="fill" style="min-width:170px;"></span> &nbsp;&nbsp; วันที่ <span class="fill" style="min-width:120px;"></span> &nbsp;&nbsp; จำนวนผู้รับประเมิน <span class="fill" style="min-width:60px;"></span> คน/เหตุการณ์
+          </div>`;
+    const pageDivs = pages.map((rows, i) => `<div class="pdf-page">
+            ${i === 0 ? header : ''}
+            <table>${thead}<tbody>${renderRows(rows)}</tbody></table>
+            <div class="pageno">หน้า ${i + 1}/${pages.length}</div>
+          </div>`).join('');
     return `<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>แบบฟอร์มเปล่า - ${esc(type)}</title>
           <style>
-            @page { size: A4; margin: 12mm; }
+            @page { size: A4; margin: 0; }
             * { font-family: 'TH Sarabun PSK','TH SarabunPSK','Sarabun',sans-serif; box-sizing:border-box; color:#000 !important; }
-            body { color:#000; font-size:22px; margin:0; padding:14px; }
+            html, body { margin:0; padding:0; }
+            body { background:#94a3b8; font-size:22px; }
+            .pdf-page { width:794px; min-height:1123px; background:#fff; margin:16px auto; padding:34px 40px 48px; box-shadow:0 3px 10px rgba(0,0,0,.25); position:relative; }
             h1 { font-size:22px; font-weight:bold; text-align:center; margin:0 0 4px; }
             .sub { text-align:center; font-size:22px; margin:0 0 12px; }
             .info { margin:8px 0 14px; font-size:22px; line-height:2; }
             .fill { border-bottom:1px dotted #000; display:inline-block; }
             table { width:100%; border-collapse:collapse; }
-            th { background:#e5e7eb; color:#000; border:1px solid #333; padding:6px 4px; font-size:22px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            th { background:#e5e7eb; border:1px solid #333; padding:6px 4px; font-size:22px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            td { border:1px solid #333; padding:5px 8px; font-size:22px; }
+            td.idc { text-align:center; white-space:nowrap; }
+            td.ck { text-align:center; }
+            td.sec { background:#eef2f7; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             tr { break-inside: avoid; page-break-inside: avoid; }
             thead { display: table-header-group; }
-            @media print { body { padding:0; } }
-          </style></head><body>
-          <h1>แบบประเมินและกำกับติดตามมาตรฐาน IC ด้านการพยาบาล</h1>
-          <div class="sub">โรงพยาบาลศรีสังวรสุโขทัย &nbsp;|&nbsp; แบบประเมิน: <b>${esc(type)}</b></div>
-          <div class="info">
-            หน่วยงาน <span class="fill" style="min-width:180px;"></span> &nbsp;&nbsp; ประเภท <span class="fill" style="min-width:90px;"></span><br>
-            ผู้ประเมิน <span class="fill" style="min-width:170px;"></span> &nbsp;&nbsp; วันที่ <span class="fill" style="min-width:120px;"></span> &nbsp;&nbsp; จำนวนผู้รับประเมิน <span class="fill" style="min-width:60px;"></span> คน/เหตุการณ์
-          </div>
-          <table>
-            <thead><tr>
-              <th style="width:8%;">ข้อ</th><th>รายการประเมิน</th>
-              <th style="width:12%;">ปฏิบัติ</th><th style="width:12%;">ไม่ปฏิบัติ</th><th style="width:10%;">NA</th>
-            </tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-          </body></html>`;
+            .pageno { position:absolute; bottom:14px; right:40px; font-size:16px; }
+            @media print {
+              body { background:#fff; }
+              .pdf-page { width:auto; min-height:auto; margin:0; box-shadow:none; padding:12mm; page-break-after:always; }
+              .pdf-page:last-child { page-break-after:auto; }
+            }
+          </style></head><body>${pageDivs}</body></html>`;
   };
 
   // เปิดพรีวิวแบบฟอร์มเปล่า (ผู้ใช้เลือก บันทึก PDF หรือ สั่งพิมพ์ ได้)
@@ -1560,30 +1599,33 @@ function App() {
     if (!iframe || !iframe.contentWindow || !window.html2canvas || !window.jspdf) return;
     setIsGeneratingPDF(true);
     try {
-      const body = iframe.contentWindow.document.body;
-      const canvas = await window.html2canvas(body, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        windowWidth: body.scrollWidth
-      });
+      const doc = iframe.contentWindow.document;
+      const pagesEls = doc.querySelectorAll('.pdf-page');
       const {
         jsPDF
       } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pw = pdf.internal.pageSize.getWidth();
       const ph = pdf.internal.pageSize.getHeight();
-      const imgH = canvas.height * pw / canvas.width;
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      let heightLeft = imgH;
-      let position = 0;
-      pdf.addImage(imgData, 'JPEG', 0, position, pw, imgH);
-      heightLeft -= ph;
-      while (heightLeft > 0) {
-        position -= ph;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, pw, imgH);
-        heightLeft -= ph;
+      for (let i = 0; i < pagesEls.length; i++) {
+        if (i > 0) pdf.addPage();
+        const el = pagesEls[i];
+        const oShadow = el.style.boxShadow,
+          oMargin = el.style.margin;
+        el.style.boxShadow = 'none';
+        el.style.margin = '0';
+        const canvas = await window.html2canvas(el, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff'
+        });
+        el.style.boxShadow = oShadow;
+        el.style.margin = oMargin;
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const ratio = Math.min(pw / canvas.width, ph / canvas.height);
+        const w = canvas.width * ratio,
+          h = canvas.height * ratio;
+        pdf.addImage(imgData, 'JPEG', (pw - w) / 2, 0, w, h);
       }
       pdf.save(`แบบฟอร์มเปล่า_${blankFormPreview.type || 'IC'}.pdf`);
     } catch (err) {
