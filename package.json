@@ -1,0 +1,12 @@
+{
+  "name": "ic-round",
+  "version": "1.0.0",
+  "private": true,
+  "description": "แบบประเมินและกำกับติดตามมาตรฐาน IC ด้านการพยาบาล (เว็บหน้าเดียว)",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "devDependencies": {
+    "@babel/standalone": "^7.23.5"
+  }
+}
