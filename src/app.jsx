@@ -286,6 +286,8 @@
       const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
       const [pdfPreviewState, setPdfPreviewState] = useState({ isOpen: false, htmlContent: '', filename: '' });
       const [blankFormPickerOpen, setBlankFormPickerOpen] = useState(false);
+      const [blankFormPreview, setBlankFormPreview] = useState({ isOpen: false, type: '', html: '' });
+      const blankFormIframeRef = useRef(null);
 
       useEffect(() => { localStorage.setItem('ic_hospital_records', JSON.stringify(hospitalRecords)); }, [hospitalRecords]);
       
@@ -822,7 +824,7 @@
       };
 
       // --- พิมพ์แบบฟอร์มเปล่าเพื่อใช้สำรวจภาคสนาม (กรอกด้วยมือ) ---
-      const printBlankForm = (type) => {
+      const buildBlankFormHTML = (type) => {
         const sections = (dynamicChecklists && dynamicChecklists[type]) || [];
         const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const box = '<span style="display:inline-block;width:15px;height:15px;border:1.5px solid #333;border-radius:3px;"></span>';
@@ -839,11 +841,11 @@
             </tr>`;
           });
         });
-        const html = `<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>แบบฟอร์มเปล่า - ${esc(type)}</title>
+        return `<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>แบบฟอร์มเปล่า - ${esc(type)}</title>
           <style>
             @page { size: A4; margin: 12mm; }
             * { font-family: 'TH Sarabun PSK','TH SarabunPSK','Sarabun',sans-serif; box-sizing:border-box; color:#000 !important; }
-            body { color:#000; font-size:22px; margin:0; }
+            body { color:#000; font-size:22px; margin:0; padding:14px; }
             h1 { font-size:22px; font-weight:bold; text-align:center; margin:0 0 4px; }
             .sub { text-align:center; font-size:22px; margin:0 0 12px; }
             .info { margin:8px 0 14px; font-size:22px; line-height:2; }
@@ -852,6 +854,7 @@
             th { background:#e5e7eb; color:#000; border:1px solid #333; padding:6px 4px; font-size:22px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             tr { break-inside: avoid; page-break-inside: avoid; }
             thead { display: table-header-group; }
+            @media print { body { padding:0; } }
           </style></head><body>
           <h1>แบบประเมินและกำกับติดตามมาตรฐาน IC ด้านการพยาบาล</h1>
           <div class="sub">โรงพยาบาลศรีสังวรสุโขทัย &nbsp;|&nbsp; แบบประเมิน: <b>${esc(type)}</b></div>
@@ -867,15 +870,48 @@
             <tbody>${rows}</tbody>
           </table>
           </body></html>`;
-        const iframe = document.createElement('iframe');
-        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
-        document.body.appendChild(iframe);
-        const doc = iframe.contentWindow.document;
-        doc.open(); doc.write(html); doc.close();
-        setTimeout(() => {
-          try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) {}
-          setTimeout(() => { try { document.body.removeChild(iframe); } catch (e) {} }, 2000);
-        }, 400);
+      };
+
+      // เปิดพรีวิวแบบฟอร์มเปล่า (ผู้ใช้เลือก บันทึก PDF หรือ สั่งพิมพ์ ได้)
+      const printBlankForm = (type) => {
+        setBlankFormPreview({ isOpen: true, type, html: buildBlankFormHTML(type) });
+      };
+
+      const doBlankFormPrint = () => {
+        const iframe = blankFormIframeRef.current;
+        if (!iframe || !iframe.contentWindow) return;
+        try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) { console.error(e); }
+      };
+
+      const doBlankFormSavePDF = async () => {
+        const iframe = blankFormIframeRef.current;
+        if (!iframe || !iframe.contentWindow || !window.html2canvas || !window.jspdf) return;
+        setIsGeneratingPDF(true);
+        try {
+          const body = iframe.contentWindow.document.body;
+          const canvas = await window.html2canvas(body, { scale: 2, useCORS: true, backgroundColor: '#ffffff', windowWidth: body.scrollWidth });
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pw = pdf.internal.pageSize.getWidth();
+          const ph = pdf.internal.pageSize.getHeight();
+          const imgH = canvas.height * pw / canvas.width;
+          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+          let heightLeft = imgH;
+          let position = 0;
+          pdf.addImage(imgData, 'JPEG', 0, position, pw, imgH);
+          heightLeft -= ph;
+          while (heightLeft > 0) {
+            position -= ph;
+            pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', 0, position, pw, imgH);
+            heightLeft -= ph;
+          }
+          pdf.save(`แบบฟอร์มเปล่า_${blankFormPreview.type || 'IC'}.pdf`);
+        } catch (err) {
+          console.error(err);
+          showPopup({ title: 'เกิดข้อผิดพลาด', message: 'บันทึก PDF ไม่สำเร็จ ลองใช้ปุ่ม "สั่งพิมพ์" แล้วเลือกปลายทางเป็น "บันทึกเป็น PDF" แทนได้ครับ', type: 'error' });
+        }
+        setIsGeneratingPDF(false);
       };
 
       const handleCompletePerson = (pIndex) => {
@@ -2737,6 +2773,28 @@
                        <button type="button" onClick={() => setBlankFormPickerOpen(false)} className="px-5 py-2.5 rounded-xl font-bold text-slate-600 bg-gray-100 hover:bg-gray-200 transition-colors">ปิด</button>
                     </div>
                  </div>
+              </div>
+           )}
+
+           {/* Modal พรีวิวแบบฟอร์มเปล่า — เลือกบันทึก PDF หรือ สั่งพิมพ์ */}
+           {blankFormPreview.isOpen && (
+              <div className="fixed inset-0 z-[10001] bg-slate-900/90 backdrop-blur-sm flex flex-col p-3 sm:p-6 print:hidden">
+                 <div className="bg-white rounded-t-2xl max-w-4xl w-full mx-auto shadow-lg shrink-0 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="text-lg font-black text-[#32355c] flex items-center gap-2"><Printer className="w-6 h-6 text-[#16bba6]"/> พรีวิวแบบฟอร์มเปล่า — {blankFormPreview.type}</h3>
+                    <div className="flex flex-wrap gap-2">
+                       <button onClick={doBlankFormSavePDF} disabled={isGeneratingPDF} className="px-4 py-2.5 rounded-xl font-bold text-white bg-[#f1a164] hover:bg-[#de8f55] transition-colors shadow-md flex items-center gap-2 disabled:opacity-50">
+                          {isGeneratingPDF ? <Loader2 className="w-5 h-5 animate-spin"/> : <Download className="w-5 h-5"/>} บันทึก PDF
+                       </button>
+                       <button onClick={doBlankFormPrint} disabled={isGeneratingPDF} className="px-4 py-2.5 rounded-xl font-bold text-white bg-[#238885] hover:bg-[#16bba6] transition-colors shadow-md flex items-center gap-2 disabled:opacity-50">
+                          <Printer className="w-5 h-5"/> สั่งพิมพ์
+                       </button>
+                       <button onClick={() => setBlankFormPreview({ isOpen: false, type: '', html: '' })} disabled={isGeneratingPDF} className="px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50">ปิด</button>
+                    </div>
+                 </div>
+                 <div className="flex-1 w-full max-w-4xl mx-auto bg-slate-200 rounded-b-2xl overflow-hidden">
+                    <iframe ref={blankFormIframeRef} srcDoc={blankFormPreview.html} title="พรีวิวแบบฟอร์มเปล่า" className="w-full h-full bg-white" style={{ border: 'none' }} />
+                 </div>
+                 <p className="text-center text-xs text-slate-300 mt-2 shrink-0 px-4">บนมือถือ/แท็บเล็ต ถ้า "สั่งพิมพ์" ใช้ไม่ได้ ให้กด "บันทึก PDF" เพื่อดาวน์โหลดไฟล์ไว้พิมพ์ทีหลัง</p>
               </div>
            )}
 
