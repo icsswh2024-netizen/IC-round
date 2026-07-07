@@ -842,7 +842,7 @@
         const html = `<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>แบบฟอร์มเปล่า - ${esc(type)}</title>
           <style>
             @page { size: A4; margin: 12mm; }
-            * { font-family: 'Sarabun','TH Sarabun PSK',sans-serif; box-sizing:border-box; }
+            * { font-family: 'TH Sarabun PSK','TH SarabunPSK','Sarabun',sans-serif; box-sizing:border-box; }
             body { color:#000; font-size:13px; margin:0; }
             h1 { font-size:17px; text-align:center; margin:0 0 2px; }
             .sub { text-align:center; font-size:13px; margin:0 0 10px; color:#333; }
