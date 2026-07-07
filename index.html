@@ -1560,10 +1560,11 @@ function App() {
             .info { margin:8px 0 14px; font-size:22px; line-height:2; }
             .fill { border-bottom:1px dotted #000; display:inline-block; }
             table { width:100%; border-collapse:collapse; }
-            th { background:#e5e7eb; border:1px solid #333; padding:6px 4px; font-size:22px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-            td { border:1px solid #333; padding:5px 8px; font-size:22px; }
-            td.idc { text-align:center; white-space:nowrap; }
-            td.ck { text-align:center; }
+            th { background:#e5e7eb; border:1px solid #333; padding:6px 4px; font-size:22px; vertical-align:middle; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            td { border:1px solid #333; padding:5px 8px; font-size:22px; vertical-align:middle; }
+            td.idc { text-align:center; white-space:nowrap; vertical-align:middle; }
+            td.ck { text-align:center; vertical-align:middle; }
+            td.ck span { vertical-align:middle; }
             td.sec { background:#eef2f7; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             tr { break-inside: avoid; page-break-inside: avoid; }
             thead { display: table-header-group; }
