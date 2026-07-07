@@ -849,13 +849,22 @@
         if (cur.length) pages.push(cur);
         if (pages.length === 0) pages.push([]);
 
-        const thead = `<thead><tr>
-              <th style="width:8%;">ข้อ</th><th>รายการประเมิน</th>
-              <th style="width:13%;">ปฏิบัติ</th><th style="width:13%;">ไม่ปฏิบัติ</th><th style="width:10%;">NA</th>
-            </tr></thead>`;
+        const headRow = `<div class="grow ghead">
+            <div class="cell c-id">ข้อ</div>
+            <div class="cell c-text">รายการประเมิน</div>
+            <div class="cell c-ck">ปฏิบัติ</div>
+            <div class="cell c-ck">ไม่ปฏิบัติ</div>
+            <div class="cell c-ck">NA</div>
+          </div>`;
         const renderRows = (rows) => rows.map(r => r.kind === 'section'
-          ? `<tr><td colspan="5" class="sec">${esc(r.title)}</td></tr>`
-          : `<tr><td class="idc">${esc(r.id)}</td><td>${esc(r.text)}</td><td class="ck">${box}</td><td class="ck">${box}</td><td class="ck">${box}</td></tr>`
+          ? `<div class="grow"><div class="cell c-sec">${esc(r.title)}</div></div>`
+          : `<div class="grow">
+              <div class="cell c-id">${esc(r.id)}</div>
+              <div class="cell c-text">${esc(r.text)}</div>
+              <div class="cell c-ck">${box}</div>
+              <div class="cell c-ck">${box}</div>
+              <div class="cell c-ck">${box}</div>
+            </div>`
         ).join('');
         const header = `<h1>แบบประเมินและกำกับติดตามมาตรฐาน IC ด้านการพยาบาล</h1>
           <div class="sub">โรงพยาบาลศรีสังวรสุโขทัย &nbsp;|&nbsp; แบบประเมิน: <b>${esc(type)}</b></div>
@@ -865,7 +874,7 @@
           </div>`;
         const pageDivs = pages.map((rows, i) => `<div class="pdf-page">
             ${i === 0 ? header : ''}
-            <table>${thead}<tbody>${renderRows(rows)}</tbody></table>
+            <div class="gtable">${headRow}${renderRows(rows)}</div>
             <div class="pageno">หน้า ${i + 1}/${pages.length}</div>
           </div>`).join('');
 
@@ -880,15 +889,15 @@
             .sub { text-align:center; font-size:22px; margin:0 0 12px; }
             .info { margin:8px 0 14px; font-size:22px; line-height:2; }
             .fill { border-bottom:1px dotted #000; display:inline-block; }
-            table { width:100%; border-collapse:collapse; }
-            th { background:#e5e7eb; border:1px solid #333; padding:6px 4px; font-size:22px; vertical-align:middle; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-            td { border:1px solid #333; padding:5px 8px; font-size:22px; vertical-align:middle; }
-            td.idc { text-align:center; white-space:nowrap; vertical-align:middle; }
-            td.ck { text-align:center; vertical-align:middle; }
-            td.ck span { vertical-align:middle; }
-            td.sec { background:#eef2f7; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-            tr { break-inside: avoid; page-break-inside: avoid; }
-            thead { display: table-header-group; }
+            .gtable { border-top:1px solid #333; border-left:1px solid #333; }
+            .grow { display:flex; align-items:stretch; break-inside:avoid; page-break-inside:avoid; }
+            .cell { display:flex; align-items:center; padding:6px 8px; font-size:22px; border-right:1px solid #333; border-bottom:1px solid #333; min-height:40px; line-height:1.35; }
+            .c-id { flex:0 0 8%; justify-content:center; text-align:center; }
+            .c-text { flex:1 1 auto; min-width:0; }
+            .c-ck { flex:0 0 12%; justify-content:center; }
+            .ghead .cell { background:#e5e7eb; font-weight:bold; justify-content:center; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .c-sec { flex:1 1 auto; background:#eef2f7; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .box { flex:0 0 auto; width:16px; height:16px; border:1.5px solid #333; border-radius:3px; }
             .pageno { position:absolute; bottom:14px; right:40px; font-size:16px; }
             @media print {
               body { background:#fff; }
@@ -907,6 +916,41 @@
         const iframe = blankFormIframeRef.current;
         if (!iframe || !iframe.contentWindow) return;
         try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) { console.error(e); }
+      };
+
+      // ดาวน์โหลดไฟล์ PDF ตรง ๆ (ใช้ได้บนมือถือ/แท็บเล็ต) เรนเดอร์ทีละหน้า A4 แบบ fit-to-page
+      const doBlankFormSavePDF = async () => {
+        const iframe = blankFormIframeRef.current;
+        if (!iframe || !iframe.contentWindow || !window.html2canvas || !window.jspdf) {
+          showPopup({ title: 'ยังโหลดไม่เสร็จ', message: 'ไลบรารีสร้าง PDF กำลังโหลด กรุณาลองใหม่อีกครั้งในอีกสักครู่', type: 'error' });
+          return;
+        }
+        setIsGeneratingPDF(true);
+        try {
+          const doc = iframe.contentWindow.document;
+          const pagesEls = doc.querySelectorAll('.pdf-page');
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pw = pdf.internal.pageSize.getWidth();
+          const ph = pdf.internal.pageSize.getHeight();
+          for (let i = 0; i < pagesEls.length; i++) {
+            if (i > 0) pdf.addPage();
+            const el = pagesEls[i];
+            const oShadow = el.style.boxShadow, oMargin = el.style.margin;
+            el.style.boxShadow = 'none'; el.style.margin = '0';
+            const canvas = await window.html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            el.style.boxShadow = oShadow; el.style.margin = oMargin;
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const ratio = Math.min(pw / canvas.width, ph / canvas.height);
+            const w = canvas.width * ratio, h = canvas.height * ratio;
+            pdf.addImage(imgData, 'JPEG', (pw - w) / 2, 0, w, h);
+          }
+          pdf.save(`แบบฟอร์มเปล่า_${blankFormPreview.type || 'IC'}.pdf`);
+        } catch (err) {
+          console.error(err);
+          showPopup({ title: 'เกิดข้อผิดพลาด', message: 'บันทึก PDF ไม่สำเร็จ ลองใช้ปุ่ม "สั่งพิมพ์" แล้วเลือก "บันทึกเป็น PDF" แทนได้ครับ', type: 'error' });
+        }
+        setIsGeneratingPDF(false);
       };
 
       const handleCompletePerson = (pIndex) => {
@@ -2777,16 +2821,19 @@
                  <div className="bg-white rounded-t-2xl max-w-4xl w-full mx-auto shadow-lg shrink-0 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
                     <h3 className="text-lg font-black text-[#32355c] flex items-center gap-2"><Printer className="w-6 h-6 text-[#16bba6]"/> พรีวิวแบบฟอร์มเปล่า — {blankFormPreview.type}</h3>
                     <div className="flex flex-wrap gap-2">
-                       <button onClick={doBlankFormPrint} className="px-5 py-2.5 rounded-xl font-bold text-white bg-[#238885] hover:bg-[#16bba6] transition-colors shadow-md flex items-center gap-2">
-                          <Printer className="w-5 h-5"/> พิมพ์ / บันทึกเป็น PDF
+                       <button onClick={doBlankFormSavePDF} disabled={isGeneratingPDF} className="px-4 py-2.5 rounded-xl font-bold text-white bg-[#f1a164] hover:bg-[#de8f55] transition-colors shadow-md flex items-center gap-2 disabled:opacity-50">
+                          {isGeneratingPDF ? <Loader2 className="w-5 h-5 animate-spin"/> : <Download className="w-5 h-5"/>} {isGeneratingPDF ? 'กำลังสร้าง...' : 'บันทึก PDF'}
                        </button>
-                       <button onClick={() => setBlankFormPreview({ isOpen: false, type: '', html: '' })} className="px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-gray-100 hover:bg-gray-200 transition-colors">ปิด</button>
+                       <button onClick={doBlankFormPrint} disabled={isGeneratingPDF} className="px-4 py-2.5 rounded-xl font-bold text-white bg-[#238885] hover:bg-[#16bba6] transition-colors shadow-md flex items-center gap-2 disabled:opacity-50">
+                          <Printer className="w-5 h-5"/> สั่งพิมพ์
+                       </button>
+                       <button onClick={() => setBlankFormPreview({ isOpen: false, type: '', html: '' })} disabled={isGeneratingPDF} className="px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50">ปิด</button>
                     </div>
                  </div>
                  <div className="flex-1 w-full max-w-4xl mx-auto bg-slate-200 rounded-b-2xl overflow-hidden">
                     <iframe ref={blankFormIframeRef} srcDoc={blankFormPreview.html} title="พรีวิวแบบฟอร์มเปล่า" className="w-full h-full bg-white" style={{ border: 'none' }} />
                  </div>
-                 <p className="text-center text-xs text-slate-300 mt-2 shrink-0 px-4">กด "พิมพ์ / บันทึกเป็น PDF" → ในหน้าต่างที่เปิดขึ้น เลือกปลายทางเป็น <b>เครื่องพิมพ์</b> เพื่อพิมพ์ หรือ <b>"บันทึกเป็น PDF" (Save as PDF)</b> เพื่อดาวน์โหลดไฟล์ที่หน้าตาตรงกับพรีวิวทุกจุด</p>
+                 <p className="text-center text-xs text-slate-300 mt-2 shrink-0 px-4"><b>บันทึก PDF</b> = ดาวน์โหลดไฟล์ลงเครื่อง (ใช้ได้บนมือถือ/แท็บเล็ต) &nbsp;|&nbsp; <b>สั่งพิมพ์</b> = เปิดหน้าต่างพิมพ์ (เลือกเครื่องพิมพ์ หรือ Save as PDF)</p>
               </div>
            )}
 
