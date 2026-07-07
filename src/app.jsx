@@ -828,28 +828,28 @@
         const box = '<span style="display:inline-block;width:15px;height:15px;border:1.5px solid #333;border-radius:3px;"></span>';
         let rows = '';
         sections.forEach(section => {
-          rows += `<tr><td colspan="5" style="background:#eef2f7;font-weight:bold;font-size:18px;padding:6px 8px;border:1px solid #999;">${esc(section.title || '')}</td></tr>`;
+          rows += `<tr><td colspan="5" style="background:#eef2f7;font-weight:bold;font-size:22px;padding:6px 8px;border:1px solid #333;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${esc(section.title || '')}</td></tr>`;
           (section.items || []).forEach(item => {
             rows += `<tr>
-              <td style="text-align:center;border:1px solid #999;padding:5px 4px;white-space:nowrap;">${esc(item.id)}</td>
-              <td style="border:1px solid #999;padding:5px 8px;">${esc(item.text)}</td>
-              <td style="text-align:center;border:1px solid #999;padding:5px 4px;">${box}</td>
-              <td style="text-align:center;border:1px solid #999;padding:5px 4px;">${box}</td>
-              <td style="text-align:center;border:1px solid #999;padding:5px 4px;">${box}</td>
+              <td style="text-align:center;border:1px solid #333;padding:5px 4px;white-space:nowrap;">${esc(item.id)}</td>
+              <td style="border:1px solid #333;padding:5px 8px;">${esc(item.text)}</td>
+              <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${box}</td>
+              <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${box}</td>
+              <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${box}</td>
             </tr>`;
           });
         });
         const html = `<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>แบบฟอร์มเปล่า - ${esc(type)}</title>
           <style>
             @page { size: A4; margin: 12mm; }
-            * { font-family: 'TH Sarabun PSK','TH SarabunPSK','Sarabun',sans-serif; box-sizing:border-box; }
-            body { color:#000; font-size:16px; margin:0; }
-            h1 { font-size:18px; text-align:center; margin:0 0 2px; }
-            .sub { text-align:center; font-size:16px; margin:0 0 10px; color:#333; }
-            .info { margin:6px 0 12px; font-size:16px; line-height:2.1; }
-            .fill { border-bottom:1px dotted #333; display:inline-block; }
+            * { font-family: 'TH Sarabun PSK','TH SarabunPSK','Sarabun',sans-serif; box-sizing:border-box; color:#000 !important; }
+            body { color:#000; font-size:22px; margin:0; }
+            h1 { font-size:22px; font-weight:bold; text-align:center; margin:0 0 4px; }
+            .sub { text-align:center; font-size:22px; margin:0 0 12px; }
+            .info { margin:8px 0 14px; font-size:22px; line-height:2; }
+            .fill { border-bottom:1px dotted #000; display:inline-block; }
             table { width:100%; border-collapse:collapse; }
-            th { background:#285c6c; color:#fff; border:1px solid #999; padding:6px 4px; font-size:16px; }
+            th { background:#e5e7eb; color:#000; border:1px solid #333; padding:6px 4px; font-size:22px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             tr { break-inside: avoid; page-break-inside: avoid; }
             thead { display: table-header-group; }
           </style></head><body>
