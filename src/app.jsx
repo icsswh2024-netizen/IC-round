@@ -21,6 +21,7 @@
     const Download = ({className}) => <svg className={className} {...IconProps}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>;
     const FileText = ({className}) => <svg className={className} {...IconProps}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>;
     const LayoutDashboard = ({className}) => <svg className={className} {...IconProps}><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>;
+    const Printer = ({className}) => <svg className={className} {...IconProps}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>;
     const Clock = ({className}) => <svg className={className} {...IconProps}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
     const Trash2 = ({className}) => <svg className={className} {...IconProps}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>;
     const AlertTriangle = ({className}) => <svg className={className} {...IconProps}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>;
@@ -284,6 +285,7 @@
       // --- ตัวแปรสำหรับระบบแสดงพรีวิวและดาวน์โหลด PDF ---
       const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
       const [pdfPreviewState, setPdfPreviewState] = useState({ isOpen: false, htmlContent: '', filename: '' });
+      const [blankFormPickerOpen, setBlankFormPickerOpen] = useState(false);
 
       useEffect(() => { localStorage.setItem('ic_hospital_records', JSON.stringify(hospitalRecords)); }, [hospitalRecords]);
       
@@ -817,6 +819,63 @@
 
       const handleAnswer = (personIndex, questionId, value) => {
         setAnswers(prev => ({ ...prev, [personIndex]: { ...(prev[personIndex] || {}), [questionId]: value } }));
+      };
+
+      // --- พิมพ์แบบฟอร์มเปล่าเพื่อใช้สำรวจภาคสนาม (กรอกด้วยมือ) ---
+      const printBlankForm = (type) => {
+        const sections = (dynamicChecklists && dynamicChecklists[type]) || [];
+        const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const box = '<span style="display:inline-block;width:15px;height:15px;border:1.5px solid #333;border-radius:3px;"></span>';
+        let rows = '';
+        sections.forEach(section => {
+          rows += `<tr><td colspan="5" style="background:#eef2f7;font-weight:bold;padding:6px 8px;border:1px solid #999;">${esc(section.title || '')}</td></tr>`;
+          (section.items || []).forEach(item => {
+            rows += `<tr>
+              <td style="text-align:center;border:1px solid #999;padding:5px 4px;white-space:nowrap;">${esc(item.id)}</td>
+              <td style="border:1px solid #999;padding:5px 8px;">${esc(item.text)}</td>
+              <td style="text-align:center;border:1px solid #999;padding:5px 4px;">${box}</td>
+              <td style="text-align:center;border:1px solid #999;padding:5px 4px;">${box}</td>
+              <td style="text-align:center;border:1px solid #999;padding:5px 4px;">${box}</td>
+            </tr>`;
+          });
+        });
+        const html = `<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>แบบฟอร์มเปล่า - ${esc(type)}</title>
+          <style>
+            @page { size: A4; margin: 12mm; }
+            * { font-family: 'Sarabun','TH Sarabun PSK',sans-serif; box-sizing:border-box; }
+            body { color:#000; font-size:13px; margin:0; }
+            h1 { font-size:17px; text-align:center; margin:0 0 2px; }
+            .sub { text-align:center; font-size:13px; margin:0 0 10px; color:#333; }
+            .info { margin:6px 0 12px; font-size:13px; line-height:2.1; }
+            .fill { border-bottom:1px dotted #333; display:inline-block; }
+            table { width:100%; border-collapse:collapse; }
+            th { background:#285c6c; color:#fff; border:1px solid #999; padding:6px 4px; font-size:12px; }
+            tr { break-inside: avoid; page-break-inside: avoid; }
+            thead { display: table-header-group; }
+          </style></head><body>
+          <h1>แบบประเมินและกำกับติดตามมาตรฐาน IC ด้านการพยาบาล</h1>
+          <div class="sub">โรงพยาบาลศรีสังวรสุโขทัย &nbsp;|&nbsp; แบบประเมิน: <b>${esc(type)}</b></div>
+          <div class="info">
+            หน่วยงาน <span class="fill" style="min-width:180px;"></span> &nbsp;&nbsp; ประเภท <span class="fill" style="min-width:90px;"></span><br>
+            ผู้ประเมิน <span class="fill" style="min-width:170px;"></span> &nbsp;&nbsp; วันที่ <span class="fill" style="min-width:120px;"></span> &nbsp;&nbsp; จำนวนผู้รับประเมิน <span class="fill" style="min-width:60px;"></span> คน/เหตุการณ์
+          </div>
+          <table>
+            <thead><tr>
+              <th style="width:8%;">ข้อ</th><th>รายการประเมิน</th>
+              <th style="width:12%;">ปฏิบัติ</th><th style="width:12%;">ไม่ปฏิบัติ</th><th style="width:10%;">NA</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          </body></html>`;
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+        document.body.appendChild(iframe);
+        const doc = iframe.contentWindow.document;
+        doc.open(); doc.write(html); doc.close();
+        setTimeout(() => {
+          try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) {}
+          setTimeout(() => { try { document.body.removeChild(iframe); } catch (e) {} }, 2000);
+        }, 400);
       };
 
       const handleCompletePerson = (pIndex) => {
@@ -2657,6 +2716,30 @@
               </div>
            )}
 
+           {/* Modal เลือกแบบประเมินเพื่อพิมพ์ฟอร์มเปล่า */}
+           {blankFormPickerOpen && (
+              <div className="fixed inset-0 z-[10000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 print:hidden" onClick={() => setBlankFormPickerOpen(false)}>
+                 <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-[#285c6c] text-white px-6 py-5 flex items-center gap-3 font-bold text-xl shrink-0">
+                       <Printer className="w-6 h-6" /> เลือกแบบประเมินที่จะพิมพ์ฟอร์มเปล่า
+                    </div>
+                    <div className="p-5 overflow-y-auto">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {dynamicChecklists && Object.keys(dynamicChecklists).map((type, index) => (
+                             <button key={type} type="button" onClick={() => { setBlankFormPickerOpen(false); printBlankForm(type); }} className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-2xl text-left font-bold text-slate-700 hover:border-[#16bba6] hover:bg-[#16bba6]/5 transition-colors">
+                                <span className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-[#285c6c]/10 text-[#285c6c] font-black text-sm">{index + 1}</span>
+                                <span className="leading-tight">{type}</span>
+                             </button>
+                          ))}
+                       </div>
+                    </div>
+                    <div className="px-6 py-4 border-t border-gray-100 flex justify-end shrink-0">
+                       <button type="button" onClick={() => setBlankFormPickerOpen(false)} className="px-5 py-2.5 rounded-xl font-bold text-slate-600 bg-gray-100 hover:bg-gray-200 transition-colors">ปิด</button>
+                    </div>
+                 </div>
+              </div>
+           )}
+
            {/* Loading Screen Overlay สำหรับ Export PDF */}
            {isGeneratingPDF && !pdfPreviewState.isOpen && (
               <div className="fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-white/95 backdrop-blur-sm">
@@ -2710,6 +2793,13 @@
                           </div>
                         </div>
                         
+                        <div className="print:hidden">
+                          <button type="button" onClick={() => setBlankFormPickerOpen(true)} className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-[#285c6c] bg-white border-2 border-[#285c6c]/40 hover:bg-[#285c6c] hover:text-white transition-colors shadow-sm">
+                             <Printer className="w-5 h-5" /> พิมพ์แบบฟอร์มเปล่า (สำหรับสำรวจภาคสนาม)
+                          </button>
+                          <p className="text-sm text-slate-500 mt-2 font-medium">พิมพ์ฟอร์มว่างออกกระดาษเพื่อถือไปกรอกมือขณะสำรวจ แล้วค่อยนำมาบันทึกในระบบภายหลัง</p>
+                        </div>
+
                         <div>
                           <label className="block text-lg font-bold text-slate-800 mb-3">จำนวนผู้ที่รับการประเมินหรือเหตุการณ์ <span className="text-rose-500">*</span></label>
                           <select className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#16bba6] outline-none text-lg bg-white text-slate-900 font-bold shadow-sm" value={numPeople} onChange={(e) => { const val = parseInt(e.target.value); setNumPeople(val); setCompletedPeople({}); if (activeTab !== 'summary' && parseInt(activeTab) >= val) { setActiveTab("summary"); } }}>

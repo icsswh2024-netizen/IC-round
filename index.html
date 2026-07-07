@@ -319,6 +319,21 @@ const LayoutDashboard = ({
   y: "16",
   rx: "1"
 }));
+const Printer = ({
+  className
+}) => /*#__PURE__*/React.createElement("svg", {
+  className: className,
+  ...IconProps
+}, /*#__PURE__*/React.createElement("polyline", {
+  points: "6 9 6 2 18 2 18 9"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"
+}), /*#__PURE__*/React.createElement("rect", {
+  x: "6",
+  y: "14",
+  width: "12",
+  height: "8"
+}));
 const Clock = ({
   className
 }) => /*#__PURE__*/React.createElement("svg", {
@@ -930,6 +945,7 @@ function App() {
     htmlContent: '',
     filename: ''
   });
+  const [blankFormPickerOpen, setBlankFormPickerOpen] = useState(false);
   useEffect(() => {
     localStorage.setItem('ic_hospital_records', JSON.stringify(hospitalRecords));
   }, [hospitalRecords]);
@@ -1464,6 +1480,72 @@ function App() {
         [questionId]: value
       }
     }));
+  };
+
+  // --- พิมพ์แบบฟอร์มเปล่าเพื่อใช้สำรวจภาคสนาม (กรอกด้วยมือ) ---
+  const printBlankForm = type => {
+    const sections = dynamicChecklists && dynamicChecklists[type] || [];
+    const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const box = '<span style="display:inline-block;width:15px;height:15px;border:1.5px solid #333;border-radius:3px;"></span>';
+    let rows = '';
+    sections.forEach(section => {
+      rows += `<tr><td colspan="5" style="background:#eef2f7;font-weight:bold;padding:6px 8px;border:1px solid #999;">${esc(section.title || '')}</td></tr>`;
+      (section.items || []).forEach(item => {
+        rows += `<tr>
+              <td style="text-align:center;border:1px solid #999;padding:5px 4px;white-space:nowrap;">${esc(item.id)}</td>
+              <td style="border:1px solid #999;padding:5px 8px;">${esc(item.text)}</td>
+              <td style="text-align:center;border:1px solid #999;padding:5px 4px;">${box}</td>
+              <td style="text-align:center;border:1px solid #999;padding:5px 4px;">${box}</td>
+              <td style="text-align:center;border:1px solid #999;padding:5px 4px;">${box}</td>
+            </tr>`;
+      });
+    });
+    const html = `<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>แบบฟอร์มเปล่า - ${esc(type)}</title>
+          <style>
+            @page { size: A4; margin: 12mm; }
+            * { font-family: 'Sarabun','TH Sarabun PSK',sans-serif; box-sizing:border-box; }
+            body { color:#000; font-size:13px; margin:0; }
+            h1 { font-size:17px; text-align:center; margin:0 0 2px; }
+            .sub { text-align:center; font-size:13px; margin:0 0 10px; color:#333; }
+            .info { margin:6px 0 12px; font-size:13px; line-height:2.1; }
+            .fill { border-bottom:1px dotted #333; display:inline-block; }
+            table { width:100%; border-collapse:collapse; }
+            th { background:#285c6c; color:#fff; border:1px solid #999; padding:6px 4px; font-size:12px; }
+            tr { break-inside: avoid; page-break-inside: avoid; }
+            thead { display: table-header-group; }
+          </style></head><body>
+          <h1>แบบประเมินและกำกับติดตามมาตรฐาน IC ด้านการพยาบาล</h1>
+          <div class="sub">โรงพยาบาลศรีสังวรสุโขทัย &nbsp;|&nbsp; แบบประเมิน: <b>${esc(type)}</b></div>
+          <div class="info">
+            หน่วยงาน <span class="fill" style="min-width:180px;"></span> &nbsp;&nbsp; ประเภท <span class="fill" style="min-width:90px;"></span><br>
+            ผู้ประเมิน <span class="fill" style="min-width:170px;"></span> &nbsp;&nbsp; วันที่ <span class="fill" style="min-width:120px;"></span> &nbsp;&nbsp; จำนวนผู้รับประเมิน <span class="fill" style="min-width:60px;"></span> คน/เหตุการณ์
+          </div>
+          <table>
+            <thead><tr>
+              <th style="width:8%;">ข้อ</th><th>รายการประเมิน</th>
+              <th style="width:12%;">ปฏิบัติ</th><th style="width:12%;">ไม่ปฏิบัติ</th><th style="width:10%;">NA</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          </body></html>`;
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (e) {}
+      setTimeout(() => {
+        try {
+          document.body.removeChild(iframe);
+        } catch (e) {}
+      }, 2000);
+    }, 400);
   };
   const handleCompletePerson = pIndex => {
     const pAnswers = answers[pIndex] || {};
@@ -4388,7 +4470,39 @@ function App() {
     dangerouslySetInnerHTML: {
       __html: pdfPreviewState.htmlContent
     }
-  })))), isGeneratingPDF && !pdfPreviewState.isOpen && /*#__PURE__*/React.createElement("div", {
+  })))), blankFormPickerOpen && /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-[10000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 print:hidden",
+    onClick: () => setBlankFormPickerOpen(false)
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden",
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#285c6c] text-white px-6 py-5 flex items-center gap-3 font-bold text-xl shrink-0"
+  }, /*#__PURE__*/React.createElement(Printer, {
+    className: "w-6 h-6"
+  }), " เลือกแบบประเมินที่จะพิมพ์ฟอร์มเปล่า"), /*#__PURE__*/React.createElement("div", {
+    className: "p-5 overflow-y-auto"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 sm:grid-cols-2 gap-3"
+  }, dynamicChecklists && Object.keys(dynamicChecklists).map((type, index) => /*#__PURE__*/React.createElement("button", {
+    key: type,
+    type: "button",
+    onClick: () => {
+      setBlankFormPickerOpen(false);
+      printBlankForm(type);
+    },
+    className: "flex items-center gap-3 p-4 border-2 border-gray-200 rounded-2xl text-left font-bold text-slate-700 hover:border-[#16bba6] hover:bg-[#16bba6]/5 transition-colors"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-[#285c6c]/10 text-[#285c6c] font-black text-sm"
+  }, index + 1), /*#__PURE__*/React.createElement("span", {
+    className: "leading-tight"
+  }, type))))), /*#__PURE__*/React.createElement("div", {
+    className: "px-6 py-4 border-t border-gray-100 flex justify-end shrink-0"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => setBlankFormPickerOpen(false),
+    className: "px-5 py-2.5 rounded-xl font-bold text-slate-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+  }, "ปิด")))), isGeneratingPDF && !pdfPreviewState.isOpen && /*#__PURE__*/React.createElement("div", {
     className: "fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-white/95 backdrop-blur-sm"
   }, /*#__PURE__*/React.createElement(Loader2, {
     className: "w-20 h-20 animate-spin text-[#16bba6] mb-6"
@@ -4480,7 +4594,17 @@ function App() {
     className: `w-6 h-6 shrink-0 ${assessmentType === type ? 'text-emerald-200' : 'text-[#285c6c]'}`
   }), /*#__PURE__*/React.createElement("span", {
     className: "whitespace-nowrap overflow-hidden text-ellipsis leading-tight"
-  }, index + 1, ". ", type))))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+  }, index + 1, ". ", type))))), /*#__PURE__*/React.createElement("div", {
+    className: "print:hidden"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => setBlankFormPickerOpen(true),
+    className: "inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-[#285c6c] bg-white border-2 border-[#285c6c]/40 hover:bg-[#285c6c] hover:text-white transition-colors shadow-sm"
+  }, /*#__PURE__*/React.createElement(Printer, {
+    className: "w-5 h-5"
+  }), " พิมพ์แบบฟอร์มเปล่า (สำหรับสำรวจภาคสนาม)"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm text-slate-500 mt-2 font-medium"
+  }, "พิมพ์ฟอร์มว่างออกกระดาษเพื่อถือไปกรอกมือขณะสำรวจ แล้วค่อยนำมาบันทึกในระบบภายหลัง")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     className: "block text-lg font-bold text-slate-800 mb-3"
   }, "จำนวนผู้ที่รับการประเมินหรือเหตุการณ์ ", /*#__PURE__*/React.createElement("span", {
     className: "text-rose-500"
