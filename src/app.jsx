@@ -828,7 +828,7 @@
         const box = '<span style="display:inline-block;width:15px;height:15px;border:1.5px solid #333;border-radius:3px;"></span>';
         let rows = '';
         sections.forEach(section => {
-          rows += `<tr><td colspan="5" style="background:#eef2f7;font-weight:bold;padding:6px 8px;border:1px solid #999;">${esc(section.title || '')}</td></tr>`;
+          rows += `<tr><td colspan="5" style="background:#eef2f7;font-weight:bold;font-size:18px;padding:6px 8px;border:1px solid #999;">${esc(section.title || '')}</td></tr>`;
           (section.items || []).forEach(item => {
             rows += `<tr>
               <td style="text-align:center;border:1px solid #999;padding:5px 4px;white-space:nowrap;">${esc(item.id)}</td>
@@ -843,13 +843,13 @@
           <style>
             @page { size: A4; margin: 12mm; }
             * { font-family: 'TH Sarabun PSK','TH SarabunPSK','Sarabun',sans-serif; box-sizing:border-box; }
-            body { color:#000; font-size:13px; margin:0; }
-            h1 { font-size:17px; text-align:center; margin:0 0 2px; }
-            .sub { text-align:center; font-size:13px; margin:0 0 10px; color:#333; }
-            .info { margin:6px 0 12px; font-size:13px; line-height:2.1; }
+            body { color:#000; font-size:16px; margin:0; }
+            h1 { font-size:18px; text-align:center; margin:0 0 2px; }
+            .sub { text-align:center; font-size:16px; margin:0 0 10px; color:#333; }
+            .info { margin:6px 0 12px; font-size:16px; line-height:2.1; }
             .fill { border-bottom:1px dotted #333; display:inline-block; }
             table { width:100%; border-collapse:collapse; }
-            th { background:#285c6c; color:#fff; border:1px solid #999; padding:6px 4px; font-size:12px; }
+            th { background:#285c6c; color:#fff; border:1px solid #999; padding:6px 4px; font-size:16px; }
             tr { break-inside: avoid; page-break-inside: avoid; }
             thead { display: table-header-group; }
           </style></head><body>
