@@ -1,0 +1,6 @@
+# Netlify headers — บังคับให้เบราว์เซอร์ตรวจเวอร์ชันใหม่ทุกครั้ง (กันแคชหน้าเก่าค้าง)
+# ทำให้ URL เดิมโหลด index.html ล่าสุดเสมอ (ยังเร็วอยู่เพราะถ้าไม่เปลี่ยนจะได้ 304)
+/*
+  Cache-Control: no-cache, must-revalidate
+/index.html
+  Cache-Control: no-cache, must-revalidate
