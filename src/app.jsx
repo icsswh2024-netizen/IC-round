@@ -1288,7 +1288,7 @@
 
                   <div className="divide-y divide-gray-100 print:divide-gray-200">
                     {section.items.map((item) => (
-                      <div key={item.id} className="py-4 px-5 sm:px-6 hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 pdf-no-break print:py-2 print:hover:bg-transparent">
+                      <div key={item.id} className="py-4 px-4 sm:px-6 hover:bg-slate-50 transition-colors flex flex-row items-center justify-between gap-2 sm:gap-4 pdf-no-break print:py-2 print:hover:bg-transparent">
                         <div className="flex-1 text-base min-w-0 break-words whitespace-normal flex items-start">
                           <span className={`font-bold ${colors.itemText} w-10 shrink-0 mt-0.5 print:text-black`}>{item.id}</span>
                           <div className="shrink-0 flex flex-wrap gap-1.5 mt-0 mr-3">
@@ -1298,10 +1298,10 @@
                           </div>
                           <span className="text-slate-800 font-medium flex-1 mt-0.5 print:text-black leading-relaxed text-lg">{item.text}</span>
                         </div>
-                        <div className="flex gap-2.5 self-start md:self-center print:hidden">
-                          <button onClick={() => handleAnswer(pIndex, item.id, 'DONE')} className={`flex flex-col items-center justify-center w-20 sm:w-24 py-2.5 rounded-xl border-2 text-sm font-bold transition-all ${((answers[pIndex]||{})[item.id] === 'DONE') ? 'bg-green-600 border-green-600 text-white shadow-md' : 'bg-white border-gray-300 text-gray-500 hover:bg-green-50 hover:border-green-500/50 hover:text-green-600'}`}><CheckCircle2 className="w-6 h-6 mb-1" /> ปฏิบัติ</button>
-                          <button onClick={() => handleAnswer(pIndex, item.id, 'NOT_DONE')} className={`flex flex-col items-center justify-center w-20 sm:w-24 py-2.5 rounded-xl border-2 text-sm font-bold transition-all ${((answers[pIndex]||{})[item.id] === 'NOT_DONE') ? 'bg-red-600 border-red-600 text-white shadow-md' : 'bg-white border-gray-300 text-gray-500 hover:bg-red-50 hover:border-red-500/50 hover:text-red-600'}`}><XCircle className="w-6 h-6 mb-1" /> ไม่ปฏิบัติ</button>
-                          <button onClick={() => handleAnswer(pIndex, item.id, 'NA')} className={`flex flex-col items-center justify-center w-20 sm:w-24 py-2.5 rounded-xl border-2 text-sm font-bold transition-all ${((answers[pIndex]||{})[item.id] === 'NA') ? 'bg-gray-500 border-gray-500 text-white shadow-md' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 hover:border-gray-500/50 hover:text-gray-600'}`} title="Not Applicable (ไม่นำมาคิดคะแนน)"><MinusCircle className="w-6 h-6 mb-1" /> NA</button>
+                        <div className="flex gap-1.5 sm:gap-2.5 self-center shrink-0 print:hidden">
+                          <button onClick={() => handleAnswer(pIndex, item.id, 'DONE')} className={`flex flex-col items-center justify-center w-16 sm:w-24 py-2 sm:py-2.5 rounded-xl border-2 text-xs sm:text-sm font-bold transition-all ${((answers[pIndex]||{})[item.id] === 'DONE') ? 'bg-green-600 border-green-600 text-white shadow-md' : 'bg-white border-gray-300 text-gray-500 hover:bg-green-50 hover:border-green-500/50 hover:text-green-600'}`}><CheckCircle2 className="w-6 h-6 mb-1" /> ปฏิบัติ</button>
+                          <button onClick={() => handleAnswer(pIndex, item.id, 'NOT_DONE')} className={`flex flex-col items-center justify-center w-16 sm:w-24 py-2 sm:py-2.5 rounded-xl border-2 text-xs sm:text-sm font-bold transition-all ${((answers[pIndex]||{})[item.id] === 'NOT_DONE') ? 'bg-red-600 border-red-600 text-white shadow-md' : 'bg-white border-gray-300 text-gray-500 hover:bg-red-50 hover:border-red-500/50 hover:text-red-600'}`}><XCircle className="w-6 h-6 mb-1" /> ไม่ปฏิบัติ</button>
+                          <button onClick={() => handleAnswer(pIndex, item.id, 'NA')} className={`flex flex-col items-center justify-center w-16 sm:w-24 py-2 sm:py-2.5 rounded-xl border-2 text-xs sm:text-sm font-bold transition-all ${((answers[pIndex]||{})[item.id] === 'NA') ? 'bg-gray-500 border-gray-500 text-white shadow-md' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 hover:border-gray-500/50 hover:text-gray-600'}`} title="Not Applicable (ไม่นำมาคิดคะแนน)"><MinusCircle className="w-6 h-6 mb-1" /> NA</button>
                         </div>
                         <div className="hidden print:block text-base font-bold text-black">
                            {((answers[pIndex]||{})[item.id] === 'DONE') ? '✔️ ปฏิบัติ' : ((answers[pIndex]||{})[item.id] === 'NOT_DONE') ? '❌ ไม่ปฏิบัติ' : ((answers[pIndex]||{})[item.id] === 'NA') ? '- NA' : '...'}
