@@ -1660,6 +1660,26 @@
             return { records: currentRecords, totalPeople, totalDepts, aggSections, aggBundles, grandSummary, mappingToUse: mapping, keysToUse: keys, deptTypeAverages, deptAverages, checklist };
          }, [hospitalRecords, dashType, filterYear, filterStartMonth, filterEndMonth, filterDeptType, filterDept, filterRole, filterAssessor, dynamicChecklists]);
 
+         // --- รายการความเห็นการนิเทศ (ข้อชื่นชม/ข้อเสนอแนะ) ตามตัวกรอง Dashboard ---
+         const commentRecords = useMemo(() => {
+            return hospitalRecords.filter(r => {
+                const d = new Date(r.id);
+                if (isNaN(d.getTime())) return false;
+                const rYear = d.getFullYear().toString();
+                const rMonthInt = d.getMonth() + 1;
+                if (filterYear !== "all" && rYear !== filterYear) return false;
+                if (filterStartMonth !== "all" && filterEndMonth !== "all") {
+                    if (rMonthInt < parseInt(filterStartMonth) || rMonthInt > parseInt(filterEndMonth)) return false;
+                } else if (filterStartMonth !== "all") { if (rMonthInt < parseInt(filterStartMonth)) return false; }
+                else if (filterEndMonth !== "all") { if (rMonthInt > parseInt(filterEndMonth)) return false; }
+                if (filterDeptType !== "all" && r.deptType !== filterDeptType) return false;
+                if (filterDept !== "all" && r.department !== filterDept) return false;
+                if (filterRole !== "all" && r.evaluateeRole !== filterRole) return false;
+                if (filterAssessor !== "all" && r.assessorName !== filterAssessor) return false;
+                return (r.commendation && String(r.commendation).trim()) || (r.suggestion && String(r.suggestion).trim());
+            }).sort((a, b) => b.id - a.id);
+         }, [hospitalRecords, filterYear, filterStartMonth, filterEndMonth, filterDeptType, filterDept, filterRole, filterAssessor]);
+
          // --- ข้อมูลสรุปจำนวนคน/เหตุการณ์ แบบตารางไขว้ (Cross Tabulation สำหรับทุกมาตรฐาน) ---
          const crossTabStats = useMemo(() => {
             const filteredForAllStandards = hospitalRecords.filter(r => {
@@ -1945,6 +1965,15 @@
                 roleCrossTabStats.standards.forEach(std => totalRowRoles.push(roleCrossTabStats.totalByStandard[std] > 0 ? roleCrossTabStats.totalByStandard[std] : "-"));
                 totalRowRoles.push(roleCrossTabStats.grandTotal);
                 wsData.push(totalRowRoles);
+            }
+
+            if (commentRecords && commentRecords.length > 0) {
+                wsData.push([]);
+                wsData.push(["สรุปความเห็นการนิเทศ (ข้อชื่นชม / ข้อเสนอแนะ)"]);
+                wsData.push(["หน่วยงาน", "แบบประเมิน", "ผู้ประเมิน", "วันที่", "ข้อชื่นชม", "ข้อเสนอแนะ"]);
+                commentRecords.forEach(r => {
+                    wsData.push([r.department || '-', r.assessmentType || '-', r.assessorName || '-', r.timestampStr || new Date(r.id).toLocaleString('th-TH'), r.commendation || '', r.suggestion || '']);
+                });
             }
 
             return wsData;
@@ -2309,6 +2338,32 @@
                                           </tr>
                                       </tbody>
                                   </table>
+                              </div>
+                          </div>
+                       )}
+
+                       {commentRecords.length > 0 && (
+                          <div className="bg-white rounded-3xl shadow-sm border-2 border-gray-200 overflow-hidden mb-8 pdf-no-break print:border-gray-400 mt-8">
+                              <div className="bg-[#285c6c] px-6 py-5 border-b border-gray-200 font-bold text-white text-xl flex items-center gap-3 print:bg-gray-100 print:text-black">
+                                  <FileText className="w-7 h-7 text-[#e9c460] print:hidden"/> สรุปความเห็นการนิเทศ (ข้อชื่นชม / ข้อเสนอแนะ) — {commentRecords.length} รายการ
+                              </div>
+                              <div className="p-5 space-y-4">
+                                  {commentRecords.map(r => (
+                                     <div key={r.id} className="border-2 border-gray-200 rounded-2xl p-5 print:border-gray-300 pdf-no-break">
+                                         <div className="flex flex-wrap items-center gap-2 mb-3 text-sm font-bold">
+                                             <span className="bg-[#285c6c]/10 text-[#285c6c] px-3 py-1 rounded-lg">{r.department || '-'}</span>
+                                             <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-lg">แบบ: {r.assessmentType || '-'}</span>
+                                             <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-lg">ผู้ประเมิน: {r.assessorName || '-'}</span>
+                                             <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-lg">{r.timestampStr || new Date(r.id).toLocaleDateString('th-TH')}</span>
+                                         </div>
+                                         {r.commendation && String(r.commendation).trim() && (
+                                            <div className="mb-2 text-lg leading-relaxed"><span className="font-bold text-[#238885]">💚 ข้อชื่นชม:</span> <span className="text-slate-800 whitespace-pre-wrap">{r.commendation}</span></div>
+                                         )}
+                                         {r.suggestion && String(r.suggestion).trim() && (
+                                            <div className="text-lg leading-relaxed"><span className="font-bold text-[#c2651b]">📝 ข้อเสนอแนะ:</span> <span className="text-slate-800 whitespace-pre-wrap">{r.suggestion}</span></div>
+                                         )}
+                                     </div>
+                                  ))}
                               </div>
                           </div>
                        )}
