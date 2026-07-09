@@ -50,6 +50,27 @@ html = injectBetween(
 fs.writeFileSync(IDX, html, 'utf8');
 console.log(`[JSX] คอมไพล์: src/app.jsx (${jsx.length}) -> JS (${compiled.length})`);
 
+// ---------- 1.5) ฝัง React/ReactDOM (UMD) ในไฟล์ ไม่พึ่ง CDN (กันจอขาวเมื่อเครือข่ายบล็อก cdnjs) ----------
+try {
+  const reactCode = fs.readFileSync(path.join(ROOT, 'vendor', 'react.production.min.js'), 'utf8');
+  const reactDomCode = fs.readFileSync(path.join(ROOT, 'vendor', 'react-dom.production.min.js'), 'utf8');
+  html = fs.readFileSync(IDX, 'utf8');
+  // ใช้ replacement function กันอักขระ $ ในโค้ด React ถูกตีความเป็น special pattern
+  const reactBlock =
+    '<!-- REACT:START (ฝัง React/ReactDOM ในไฟล์โดย build.js — กันจอขาวเมื่อเครือข่ายบล็อก cdnjs) -->\n' +
+    '  <script>' + reactCode + '\n</script>\n' +
+    '  <script>' + reactDomCode + '\n</script>\n' +
+    '  <!-- REACT:END -->';
+  const s = html.indexOf('<!-- REACT:START');
+  const e = html.indexOf('<!-- REACT:END -->');
+  if (s === -1 || e === -1) throw new Error('ไม่พบ marker REACT:START/REACT:END');
+  html = html.slice(0, s) + reactBlock + html.slice(e + '<!-- REACT:END -->'.length);
+  fs.writeFileSync(IDX, html, 'utf8');
+  console.log(`[REACT] ฝัง React/ReactDOM ในไฟล์ (${reactCode.length + reactDomCode.length} ตัวอักษร)`);
+} catch (err) {
+  console.warn('[REACT] ข้ามการฝัง React (คง CDN/inline เดิมไว้):', err.message);
+}
+
 // ---------- 2) สร้าง Tailwind CSS แบบ static ----------
 function findTailwindBin() {
   const names = process.platform === 'win32' ? ['tailwindcss.cmd', 'tailwindcss'] : ['tailwindcss'];
