@@ -2946,15 +2946,6 @@
                             <input type="text" placeholder="พิมพ์ชื่อหน่วยงาน..." className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#16bba6] outline-none text-lg bg-white text-slate-900 font-bold shadow-sm placeholder-gray-400" value={otherDepartment} onChange={(e) => setOtherDepartment(e.target.value)} />
                           </div>
                         )}
-
-                        <div>
-                          <label className="block text-lg font-bold text-slate-800 mb-3">💚 ข้อชื่นชม</label>
-                          <textarea rows={3} placeholder="บันทึกข้อชื่นชม / จุดเด่นที่พบ..." className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#16bba6] outline-none text-lg bg-white text-slate-900 font-medium shadow-sm placeholder-gray-400 resize-y leading-relaxed" value={commendation} onChange={(e) => setCommendation(e.target.value)} />
-                        </div>
-                        <div>
-                          <label className="block text-lg font-bold text-slate-800 mb-3">📝 ข้อเสนอแนะ</label>
-                          <textarea rows={3} placeholder="บันทึกข้อเสนอแนะ / สิ่งที่ควรปรับปรุง..." className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#16bba6] outline-none text-lg bg-white text-slate-900 font-medium shadow-sm placeholder-gray-400 resize-y leading-relaxed" value={suggestion} onChange={(e) => setSuggestion(e.target.value)} />
-                        </div>
                       </div>
                     </section>
 
@@ -2981,6 +2972,20 @@
                   </main>
                 </div>
                 
+                <div className="w-full max-w-7xl mx-auto px-4 mt-8">
+                  <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border-2 border-gray-200 flex flex-col gap-6 pdf-no-break">
+                    <h2 className="text-2xl font-black text-[#285c6c] flex items-center gap-3 border-b-2 border-gray-200 pb-4 print:text-black"><FileText className="w-8 h-8 text-[#16bba6]" /> สรุปความเห็นการนิเทศ</h2>
+                    <div>
+                      <label className="block text-lg font-bold text-slate-800 mb-3">💚 ข้อชื่นชม</label>
+                      <textarea rows={3} placeholder="บันทึกข้อชื่นชม / จุดเด่นที่พบ..." className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#16bba6] outline-none text-lg bg-white text-slate-900 font-medium shadow-sm placeholder-gray-400 resize-y leading-relaxed print:border-gray-400" value={commendation} onChange={(e) => setCommendation(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-lg font-bold text-slate-800 mb-3">📝 ข้อเสนอแนะ</label>
+                      <textarea rows={3} placeholder="บันทึกข้อเสนอแนะ / สิ่งที่ควรปรับปรุง..." className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#16bba6] outline-none text-lg bg-white text-slate-900 font-medium shadow-sm placeholder-gray-400 resize-y leading-relaxed print:border-gray-400" value={suggestion} onChange={(e) => setSuggestion(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="w-full max-w-7xl mx-auto px-4 mt-8 print:hidden">
                   <div className="flex justify-end gap-4">
                     {!hasSubmitted ? (
