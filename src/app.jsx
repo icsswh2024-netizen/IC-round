@@ -790,6 +790,8 @@
       const [evaluateeRole, setEvaluateeRole] = useState(""); 
       const [deptType, setDeptType] = useState("");
       const [department, setDepartment] = useState("");
+      const [commendation, setCommendation] = useState("");
+      const [suggestion, setSuggestion] = useState("");
       const [otherDepartment, setOtherDepartment] = useState("");
       
       const [numPeople, setNumPeople] = useState(1);
@@ -972,7 +974,7 @@
       const handleNewAssessment = () => {
         setAnswers({ 0: {} }); setHasSubmitted(false); setActiveTab("0");
         setNumPeople(1); setCompletedPeople({}); setDepartment(""); setOtherDepartment("");
-        setEvaluateeRole(""); setOtherAssessorName(""); window.scrollTo(0, 0);
+        setEvaluateeRole(""); setOtherAssessorName(""); setCommendation(""); setSuggestion(""); window.scrollTo(0, 0);
       };
 
       const handleTabChangeToSummary = () => {
@@ -1231,11 +1233,12 @@
         const deptName = department === 'อื่นๆ' ? otherDepartment : department;
         const finalAssessorName = assessorName === 'อื่นๆ' ? otherAssessorName : assessorName;
 
-        const newRecord = { id: Date.now(), assessmentType, deptType, department: deptName, numPeople, overallSummaryData, assessorName: finalAssessorName, evaluateeRole };
+        const newRecord = { id: Date.now(), assessmentType, deptType, department: deptName, numPeople, overallSummaryData, assessorName: finalAssessorName, evaluateeRole, commendation, suggestion };
         const payload = {
           timestamp: new Date().toLocaleString('th-TH'), assessmentType, assessorName: finalAssessorName, evaluateeRole, deptType, department: deptName, numPeople,
           totalFullScore: overallSummaryData.grandSummary.fullScore, totalEarnedScore: overallSummaryData.grandSummary.earnedScore, percentage: overallSummaryData.grandSummary.percentage,
-          fullDataJSON: JSON.stringify(newRecord), rawAnswers: JSON.stringify(answers) 
+          commendation, suggestion,
+          fullDataJSON: JSON.stringify(newRecord), rawAnswers: JSON.stringify(answers)
         };
 
         if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
@@ -2943,6 +2946,15 @@
                             <input type="text" placeholder="พิมพ์ชื่อหน่วยงาน..." className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#16bba6] outline-none text-lg bg-white text-slate-900 font-bold shadow-sm placeholder-gray-400" value={otherDepartment} onChange={(e) => setOtherDepartment(e.target.value)} />
                           </div>
                         )}
+
+                        <div>
+                          <label className="block text-lg font-bold text-slate-800 mb-3">💚 ข้อชื่นชม</label>
+                          <textarea rows={3} placeholder="บันทึกข้อชื่นชม / จุดเด่นที่พบ..." className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#16bba6] outline-none text-lg bg-white text-slate-900 font-medium shadow-sm placeholder-gray-400 resize-y leading-relaxed" value={commendation} onChange={(e) => setCommendation(e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="block text-lg font-bold text-slate-800 mb-3">📝 ข้อเสนอแนะ</label>
+                          <textarea rows={3} placeholder="บันทึกข้อเสนอแนะ / สิ่งที่ควรปรับปรุง..." className="w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#16bba6] outline-none text-lg bg-white text-slate-900 font-medium shadow-sm placeholder-gray-400 resize-y leading-relaxed" value={suggestion} onChange={(e) => setSuggestion(e.target.value)} />
+                        </div>
                       </div>
                     </section>
 
