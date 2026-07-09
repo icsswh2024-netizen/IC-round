@@ -5187,22 +5187,6 @@ function App() {
     className: "w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#16bba6] outline-none text-lg bg-white text-slate-900 font-bold shadow-sm placeholder-gray-400",
     value: otherDepartment,
     onChange: e => setOtherDepartment(e.target.value)
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "block text-lg font-bold text-slate-800 mb-3"
-  }, "💚 ข้อชื่นชม"), /*#__PURE__*/React.createElement("textarea", {
-    rows: 3,
-    placeholder: "บันทึกข้อชื่นชม / จุดเด่นที่พบ...",
-    className: "w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#16bba6] outline-none text-lg bg-white text-slate-900 font-medium shadow-sm placeholder-gray-400 resize-y leading-relaxed",
-    value: commendation,
-    onChange: e => setCommendation(e.target.value)
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "block text-lg font-bold text-slate-800 mb-3"
-  }, "📝 ข้อเสนอแนะ"), /*#__PURE__*/React.createElement("textarea", {
-    rows: 3,
-    placeholder: "บันทึกข้อเสนอแนะ / สิ่งที่ควรปรับปรุง...",
-    className: "w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#16bba6] outline-none text-lg bg-white text-slate-900 font-medium shadow-sm placeholder-gray-400 resize-y leading-relaxed",
-    value: suggestion,
-    onChange: e => setSuggestion(e.target.value)
   })))), /*#__PURE__*/React.createElement("div", {
     className: "print:hidden mb-10 bg-white p-3 rounded-3xl border-2 border-gray-200 sticky top-24 z-10 shadow-md"
   }, /*#__PURE__*/React.createElement("div", {
@@ -5224,6 +5208,30 @@ function App() {
     key: i,
     pIndex: i
   })), /*#__PURE__*/React.createElement(SummaryView, null))), /*#__PURE__*/React.createElement("div", {
+    className: "w-full max-w-7xl mx-auto px-4 mt-8"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-white p-6 sm:p-8 rounded-3xl shadow-sm border-2 border-gray-200 flex flex-col gap-6 pdf-no-break"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-2xl font-black text-[#285c6c] flex items-center gap-3 border-b-2 border-gray-200 pb-4 print:text-black"
+  }, /*#__PURE__*/React.createElement(FileText, {
+    className: "w-8 h-8 text-[#16bba6]"
+  }), " สรุปความเห็นการนิเทศ"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-lg font-bold text-slate-800 mb-3"
+  }, "💚 ข้อชื่นชม"), /*#__PURE__*/React.createElement("textarea", {
+    rows: 3,
+    placeholder: "บันทึกข้อชื่นชม / จุดเด่นที่พบ...",
+    className: "w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#16bba6] outline-none text-lg bg-white text-slate-900 font-medium shadow-sm placeholder-gray-400 resize-y leading-relaxed print:border-gray-400",
+    value: commendation,
+    onChange: e => setCommendation(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-lg font-bold text-slate-800 mb-3"
+  }, "📝 ข้อเสนอแนะ"), /*#__PURE__*/React.createElement("textarea", {
+    rows: 3,
+    placeholder: "บันทึกข้อเสนอแนะ / สิ่งที่ควรปรับปรุง...",
+    className: "w-full p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#16bba6] outline-none text-lg bg-white text-slate-900 font-medium shadow-sm placeholder-gray-400 resize-y leading-relaxed print:border-gray-400",
+    value: suggestion,
+    onChange: e => setSuggestion(e.target.value)
+  })))), /*#__PURE__*/React.createElement("div", {
     className: "w-full max-w-7xl mx-auto px-4 mt-8 print:hidden"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex justify-end gap-4"
