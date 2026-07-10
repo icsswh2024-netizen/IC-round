@@ -1584,7 +1584,12 @@ function App() {
           if (isHeaderRow) {
             cellStyle += " background-color: #e5e7eb; font-weight: bold; text-align: center;";
           } else if (isSubHeader) {
-            cellStyle += " background-color: #f3f4f6; font-weight: bold; text-align: left;";
+            if (typeof cellVal === 'string' && cellVal.indexOf('!!NARRATIVE!!') === 0) {
+              cellVal = cellVal.replace('!!NARRATIVE!!', '');
+              cellStyle += " background-color: #ffffff; font-weight: normal; text-align: left; white-space: pre-wrap; padding: 4px 10px 10px 10px;";
+            } else {
+              cellStyle += " background-color: #f3f4f6; font-weight: bold; text-align: left;";
+            }
           } else if (maxCols === 6) {
             // ปรับรายการประเมินย่อย: อักษรตัวบางชิดขอบซ้ายทั้งหมด
             cellStyle += " font-weight: 300; text-align: left;";
@@ -3402,9 +3407,13 @@ function App() {
       if (commentRecords && commentRecords.length > 0) {
         wsData.push([]);
         wsData.push(["สรุปความเห็นการนิเทศ (ข้อชื่นชม / ข้อเสนอแนะ)"]);
-        wsData.push(["หน่วยงาน", "แบบประเมิน", "ผู้ประเมิน", "วันที่", "ข้อชื่นชม", "ข้อเสนอแนะ"]);
-        commentRecords.forEach(r => {
-          wsData.push([r.department || '-', r.assessmentType || '-', r.assessorName || '-', r.timestampStr || new Date(r.id).toLocaleString('th-TH'), r.commendation || '', r.suggestion || '']);
+        const NAR = isForPDF ? '!!NARRATIVE!!' : '';
+        commentRecords.forEach((r, i) => {
+          const dateStr = r.timestampStr || new Date(r.id).toLocaleString('th-TH');
+          wsData.push([`${i + 1}) หน่วยงาน: ${r.department || '-'}   ·   แบบประเมิน: ${r.assessmentType || '-'}   ·   ผู้ประเมิน: ${r.assessorName || '-'}   ·   วันที่: ${dateStr}`]);
+          if (r.commendation && String(r.commendation).trim()) wsData.push([NAR + '💚 ข้อชื่นชม: ' + r.commendation]);
+          if (r.suggestion && String(r.suggestion).trim()) wsData.push([NAR + '📝 ข้อเสนอแนะ: ' + r.suggestion]);
+          wsData.push([""]);
         });
       }
       return wsData;
