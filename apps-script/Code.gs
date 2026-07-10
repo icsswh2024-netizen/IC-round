@@ -1,139 +1,245 @@
-/**
- * Google Apps Script (Code.gs) สำหรับระบบกำกับติดตาม IC
- * รองรับ: บันทึกผลประเมิน (save), ดึงข้อมูล (getData), ลบรายการ (delete), ล้างทั้งหมด (deleteAll)
- *
- * ★ เวอร์ชันนี้ "map คอลัมน์ด้วยคำสำคัญ (keyword)" เหมือนที่เว็บใช้อ่านข้อมูล
- *   จึงเข้ากับชีตเดิมของคุณได้ และจะ "เพิ่มคอลัมน์ ข้อชื่นชม / ข้อเสนอแนะ ให้อัตโนมัติ"
- *   โดยไม่ยุ่งกับคอลัมน์เดิม (ต่อท้ายเป็นคอลัมน์ใหม่ถ้ายังไม่มี)
- *
- * วิธีติดตั้ง:
- *   1) เปิด Google Sheet ปลายทาง → เมนู ส่วนขยาย (Extensions) → Apps Script
- *   2) สำรองโค้ดเดิมไว้ก่อน (คัดลอกเก็บ) แล้ววางโค้ดนี้แทนทั้งไฟล์ Code.gs
- *   3) ปรับ SHEET_NAME ด้านล่างให้ตรงกับชื่อชีตที่เก็บข้อมูล (ถ้าไม่แน่ใจ ปล่อยว่าง '' จะใช้ชีตแรก)
- *   4) กด Deploy → Manage deployments → แก้ deployment เดิม → Version: New version → Deploy
- *      (สำคัญ: ต้อง "New version" ทุกครั้ง ไม่งั้นโค้ดใหม่จะยังไม่ทำงาน) URL เดิมใช้ได้เหมือนเดิม
- */
-
-// ===== ตั้งค่า =====
-var SHEET_NAME = ''; // ชื่อชีตที่เก็บข้อมูล เช่น 'ชีต1' หรือ 'Data' — ถ้าปล่อยว่างจะใช้ชีตแรกของไฟล์
-
-// รายการฟิลด์: key ในข้อมูลที่เว็บส่งมา, คำสำคัญไว้หาคอลัมน์เดิม, ชื่อหัวคอลัมน์ (ใช้เมื่อต้องสร้างใหม่)
-var FIELDS = [
-  { key: 'timestamp',        kw: ['วัน', 'เวลา', 'timestamp'], name: 'วันที่/เวลา' },
-  { key: 'assessmentType',   kw: ['ประเภทแบบประเมิน'],         name: 'ประเภทแบบประเมิน' },
-  { key: 'assessorName',     kw: ['ผู้ประเมิน'],               name: 'ผู้ประเมิน' },
-  { key: 'deptType',         kw: ['ประเภทหน่วยงาน'],           name: 'ประเภทหน่วยงาน' },
-  { key: 'department',       kw: ['หน่วยงานที่รับ'],           name: 'หน่วยงานที่รับการประเมิน' },
-  { key: 'numPeople',        kw: ['จำนวนผู้'],                 name: 'จำนวนผู้รับการประเมิน' },
-  { key: 'evaluateeRole',    kw: ['ตำแหน่ง'],                  name: 'ตำแหน่ง' },
-  { key: 'totalFullScore',   kw: ['คะแนนเต็ม'],                name: 'คะแนนเต็ม' },
-  { key: 'totalEarnedScore', kw: ['คะแนนที่ได้'],              name: 'คะแนนที่ได้' },
-  { key: 'percentage',       kw: ['ร้อยละ'],                   name: 'ร้อยละ' },
-  { key: 'commendation',     kw: ['ชื่นชม'],                   name: 'ข้อชื่นชม' },        // ★ ใหม่
-  { key: 'suggestion',       kw: ['เสนอแนะ'],                  name: 'ข้อเสนอแนะ' },       // ★ ใหม่
-  { key: 'fullDataJSON',     kw: ['json', 'ข้อมูลดิบ'],        name: 'ข้อมูลดิบ (JSON)' },
-  { key: 'rawAnswers',       kw: ['คำตอบดิบ', 'คำตอบ'],        name: 'คำตอบดิบ (JSON)' }
-];
-
-function getSheet_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (SHEET_NAME) {
-    var s = ss.getSheetByName(SHEET_NAME);
-    if (s) return s;
-  }
-  return ss.getSheets()[0];
-}
-
-function readHeaders_(sh) {
-  var lastCol = sh.getLastColumn();
-  if (lastCol === 0) return [];
-  return sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h); });
-}
-
-function findColByKeyword_(headers, keywords) {
-  for (var i = 0; i < headers.length; i++) {
-    var h = headers[i].toLowerCase();
-    for (var k = 0; k < keywords.length; k++) {
-      if (h.indexOf(keywords[k].toLowerCase()) !== -1) return i;
-    }
-  }
-  return -1;
-}
-
-function json_(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
-}
-
-// ===== ดึงข้อมูลทั้งหมด (เว็บเรียก ?action=getData) =====
-function doGet(e) {
-  try {
-    var sh = getSheet_();
-    var data = sh.getDataRange().getValues();
-    return json_({ status: 'success', data: data });
-  } catch (err) {
-    return json_({ status: 'error', message: String(err) });
-  }
-}
-
-// ===== บันทึก / ลบ =====
 function doPost(e) {
-  var lock = LockService.getScriptLock();
-  try { lock.waitLock(20000); } catch (ignore) {}
   try {
-    var body = JSON.parse(e.postData.contents);
-    var sh = getSheet_();
+    // ระบบตรวจสอบยืดหยุ่น: รองรับทั้งการส่งแบบ JSON ตรงๆ และส่งผ่าน Form data (Hidden Form) เพื่อทะลวง CORS block
+    var rawDataStr = (e.parameter && e.parameter.payload) ? e.parameter.payload : e.postData.contents;
+    var data = JSON.parse(rawDataStr);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // --- ล้างทั้งหมด ---
-    if (body.action === 'deleteAll') {
-      var last = sh.getLastRow();
-      if (last > 1) sh.deleteRows(2, last - 1);
-      return json_({ status: 'success', message: 'deletedAll' });
+    // ===================================================================
+    // [ฟังก์ชันเพิ่มใหม่] จัดการบันทึกจำนวนเจ้าหน้าที่ ลงแท็บ "ชีต4"
+    // ===================================================================
+    if (data.action === 'saveStaffCounts') {
+      var staffSheet = ss.getSheetByName("ชีต4");
+      if (!staffSheet) {
+        staffSheet = ss.insertSheet("ชีต4");
+      }
+      staffSheet.clearContents();
+
+      // สร้างหัวตารางหลักใน ชีต4
+      staffSheet.appendRow(["รหัส_หน่วยงาน_ตำแหน่ง", "จำนวนเจ้าหน้าที่"]);
+      staffSheet.getRange(1, 1, 1, 2).setFontWeight("bold").setBackground("#e2e8f0");
+
+      var rows = [];
+      for (var key in data.data) {
+        if(data.data[key] !== "" && data.data[key] !== null) {
+            rows.push([key, data.data[key]]);
+        }
+      }
+      if (rows.length > 0) {
+         staffSheet.getRange(2, 1, rows.length, 2).setValues(rows);
+      }
+
+      // บันทึกประวัติการแก้ไขลงแท็บ "ประวัติบันทึกเจ้าหน้าที่" เผื่อใช้ตรวจสอบย้อนหลัง
+      if (data.updateLog) {
+          var logSheet = ss.getSheetByName("ประวัติบันทึกเจ้าหน้าที่");
+          if (!logSheet) {
+              logSheet = ss.insertSheet("ประวัติบันทึกเจ้าหน้าที่");
+              logSheet.appendRow(["วันที่/เวลา", "หน่วยงาน", "ผู้บันทึก", "รายละเอียด (ตำแหน่ง: จำนวน)"]);
+              logSheet.getRange(1, 1, 1, 4).setFontWeight("bold").setBackground("#e2e8f0");
+          }
+
+          var detailsText = "";
+          try {
+              var inputs = JSON.parse(data.updateLog.details);
+              var parts = [];
+              for (var r in inputs) {
+                  if (inputs[r] !== "" && inputs[r] !== null) {
+                      parts.push(r + ": " + inputs[r] + " คน");
+                  }
+              }
+              detailsText = parts.join(", ");
+          } catch(err) {
+              detailsText = data.updateLog.details;
+          }
+
+          logSheet.appendRow([
+              data.updateLog.timestamp,
+              data.updateLog.department,
+              data.updateLog.recorderName,
+              detailsText
+          ]);
+      }
+      return ContentService.createTextOutput(JSON.stringify({"status": "success"})).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // --- ลบรายการเดียว ---
-    if (body.action === 'delete') {
-      var data = sh.getDataRange().getValues();
-      if (data.length < 2) return json_({ status: 'success', message: 'empty' });
-      var headers = data[0].map(String);
-      var jsonCol = findColByKeyword_(headers, ['json', 'ข้อมูลดิบ']);
-      var deptCol = findColByKeyword_(headers, ['หน่วยงานที่รับ']);
-      var timeCol = findColByKeyword_(headers, ['วัน', 'เวลา', 'timestamp']);
-      for (var r = data.length - 1; r >= 1; r--) {
-        var match = false;
-        if (jsonCol !== -1 && data[r][jsonCol]) {
-          try { var rec = JSON.parse(data[r][jsonCol]); if (String(rec.id) === String(body.id)) match = true; } catch (er) {}
-        }
-        if (!match && timeCol !== -1 && deptCol !== -1) {
-          if (String(data[r][timeCol]) === String(body.timestampStr) && String(data[r][deptCol]) === String(body.department)) match = true;
-        }
-        if (match) { sh.deleteRow(r + 1); break; }
-      }
-      return json_({ status: 'success', message: 'deleted' });
+    // ระบบตรวจสอบ Fail-safe: สกัดกั้นแถวขยะที่มีแต่วันที่ว่างเปล่าไหลเข้าตาราง
+    if (!data.action && !data.assessmentType && !data.department && !data.fullDataJSON) {
+        return ContentService.createTextOutput(JSON.stringify({"status": "ignored", "message": "Blocked empty row"})).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // --- บันทึกผลประเมินใหม่ ---
-    var headers2 = readHeaders_(sh);
-    // หา/สร้างคอลัมน์ให้ครบทุกฟิลด์ (รวม ข้อชื่นชม/ข้อเสนอแนะ ที่จะเพิ่มใหม่ถ้ายังไม่มี)
-    FIELDS.forEach(function (f) {
-      var idx = findColByKeyword_(headers2, f.kw);
-      if (idx === -1) {
-        headers2.push(f.name);
-        idx = headers2.length - 1;
-        sh.getRange(1, headers2.length).setValue(f.name);
-      }
-      f._idx = idx;
-    });
-    var row = [];
-    for (var c = 0; c < headers2.length; c++) row.push('');
-    FIELDS.forEach(function (f) {
-      if (body[f.key] !== undefined && body[f.key] !== null) row[f._idx] = body[f.key];
-    });
-    sh.appendRow(row);
-    return json_({ status: 'success', message: 'saved' });
+    // กำหนดปลายทางแบบระบุชื่อแท็บชัดเจน เพื่อล็อกข้อมูลผลประเมินให้อยู่ใน "ชีต1" เท่านั้น ไม่ให้วิ่งไปทับชีตอื่น
+    var sheet = ss.getSheetByName("ชีต1") || ss.getSheets()[0];
 
-  } catch (err) {
-    return json_({ status: 'error', message: String(err) });
-  } finally {
-    try { lock.releaseLock(); } catch (ignore2) {}
+    // ===================================================================
+    // [ฟังก์ชันเดิมคงไว้] 1. จัดการคำสั่งล้างข้อมูลทั้งหมด (Delete All)
+    // ===================================================================
+    if (data.action === 'deleteAll') {
+      var lastRow = sheet.getLastRow();
+      if (lastRow > 1) {
+        sheet.deleteRows(2, lastRow - 1);
+      }
+      return ContentService.createTextOutput(JSON.stringify({"status": "success"})).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // ===================================================================
+    // [ฟังก์ชันเดิมคงไว้] 2. จัดการคำสั่งลบข้อมูลแถวเดียวแบบอัจฉริยะ (Delete Single Record)
+    // ===================================================================
+    if (data.action === 'delete') {
+      var targetId = data.id ? data.id.toString() : "";
+      var targetTime = data.timestampStr || "";
+      var targetDept = data.department || "";
+
+      var sheetData = sheet.getDataRange().getDisplayValues();
+
+      var jsonColIdx = -1;
+      var timeColIdx = 0;
+      var deptColIdx = 4;
+
+      for (var c = 0; c < sheetData[0].length; c++) {
+         var h = sheetData[0][c].toString().toLowerCase();
+         if (h.indexOf('json') > -1 || h.indexOf('ข้อมูลดิบ') > -1) jsonColIdx = c;
+         if (h.indexOf('วัน') > -1 || h.indexOf('เวลา') > -1) timeColIdx = c;
+         if (h.indexOf('หน่วยงานที่รับ') > -1) deptColIdx = c;
+      }
+
+      if(jsonColIdx === -1) jsonColIdx = 9;
+
+      for (var i = sheetData.length - 1; i >= 1; i--) {
+         var isMatch = false;
+
+         if (jsonColIdx > -1 && sheetData[i][jsonColIdx]) {
+             try {
+                 var record = JSON.parse(sheetData[i][jsonColIdx]);
+                 if (record.id && record.id.toString() === targetId) isMatch = true;
+             } catch(err) {}
+         }
+
+         if (!isMatch && targetTime && targetDept) {
+             var rowTime = sheetData[i][timeColIdx] || "";
+             var rowDept = sheetData[i][deptColIdx] || "";
+             if (rowTime === targetTime && rowDept === targetDept) isMatch = true;
+         }
+
+         if (isMatch) {
+             sheet.deleteRow(i + 1);
+             return ContentService.createTextOutput(JSON.stringify({"status": "success"})).setMimeType(ContentService.MimeType.JSON);
+         }
+      }
+      return ContentService.createTextOutput(JSON.stringify({"status": "not_found"})).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // ===================================================================
+    // [ฟังก์ชันเดิมคงไว้] 3. สร้างหัวตารางพื้นฐานหากยังไม่มี
+    // ===================================================================
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn() || 1).getValues()[0];
+    if (headers.length === 0 || headers[0] === "") {
+      headers = ["วันที่/เวลา", "ประเภทแบบประเมิน", "ผู้ประเมิน", "ประเภทหน่วยงาน", "หน่วยงานที่รับการประเมิน", "จำนวนผู้ถูกประเมิน (คน)", "คะแนนเต็มรวม", "คะแนนที่ได้รวม", "ร้อยละเฉลี่ย", "ข้อมูลดิบ (JSON)", "ข้อชื่นชม", "ข้อเสนอแนะ"];
+      sheet.appendRow(headers);
+      sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#e2e8f0");
+    }
+
+    // ===================================================================
+    // [ฟังก์ชันเดิมคงไว้] 4. บันทึกข้อมูลผลการประเมินใหม่
+    // ===================================================================
+    var rowData = [
+      data.timestamp || new Date().toLocaleString('th-TH'),
+      data.assessmentType,
+      data.assessorName,
+      data.deptType,
+      data.department,
+      data.numPeople,
+      data.totalFullScore,
+      data.totalEarnedScore,
+      data.percentage,
+      data.fullDataJSON
+    ];
+
+    // ===================================================================
+    // [เพิ่มใหม่] 4.1 บันทึก "ข้อชื่นชม" และ "ข้อเสนอแนะ" เป็นคอลัมน์
+    //   ใช้ตรรกะ find-or-create เหมือนคอลัมน์ "ข้อ X" ด้านล่าง
+    //   -> ถ้าชีตยังไม่มีคอลัมน์นี้ จะเพิ่มให้อัตโนมัติ โดยไม่กระทบคอลัมน์เดิม
+    // ===================================================================
+    var extraCols = [["ข้อชื่นชม", data.commendation], ["ข้อเสนอแนะ", data.suggestion]];
+    for (var xc = 0; xc < extraCols.length; xc++) {
+      var exName = extraCols[xc][0];
+      var exColIndex = headers.indexOf(exName);
+      if (exColIndex === -1) {
+        headers.push(exName);
+        sheet.getRange(1, headers.length).setValue(exName).setFontWeight("bold").setBackground("#bbf7d0");
+        exColIndex = headers.length - 1;
+      }
+      while (rowData.length <= exColIndex) { rowData.push(""); }
+      rowData[exColIndex] = extraCols[xc][1] || "";
+    }
+
+    if (data.rawAnswers) {
+      var answersObj = JSON.parse(data.rawAnswers);
+      var aggregatedAnswers = {};
+      for (var personIndex in answersObj) {
+        var personAnswers = answersObj[personIndex];
+        var pNum = parseInt(personIndex) + 1;
+        for (var qId in personAnswers) {
+          if (!aggregatedAnswers[qId]) aggregatedAnswers[qId] = [];
+          var ans = personAnswers[qId];
+          var textAns = ans === 'DONE' ? 'ปฏิบัติ' : (ans === 'NOT_DONE' ? 'ไม่ปฏิบัติ' : 'NA');
+          aggregatedAnswers[qId].push("คนที่ " + pNum + ":" + textAns);
+        }
+      }
+      for (var qId in aggregatedAnswers) {
+        var headerName = "ข้อ " + qId;
+        var colIndex = headers.indexOf(headerName);
+        if (colIndex === -1) {
+          headers.push(headerName);
+          sheet.getRange(1, headers.length).setValue(headerName).setFontWeight("bold").setBackground("#fef08a");
+          colIndex = headers.length - 1;
+        }
+        while (rowData.length <= colIndex) { rowData.push(""); }
+        rowData[colIndex] = aggregatedAnswers[qId].join(" | ");
+      }
+    }
+    sheet.appendRow(rowData);
+    return ContentService.createTextOutput(JSON.stringify({"status": "success"})).setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": error.toString()})).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // ===================================================================
+  // [ฟังก์ชันเพิ่มใหม่] ดึงข้อมูลจำนวนเจ้าหน้าที่ล่าสุดจาก "ชีต4" ไปแสดงบนหน้าเว็บ
+  // ===================================================================
+  if (e.parameter.action === 'getStaffCounts') {
+    try {
+      var staffSheet = ss.getSheetByName("ชีต4");
+      var counts = {};
+      if (staffSheet) {
+        var data = staffSheet.getDataRange().getValues();
+        for (var i = 1; i < data.length; i++) {
+          if (data[i][0]) counts[data[i][0]] = data[i][1];
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({"status": "success", "data": counts})).setMimeType(ContentService.MimeType.JSON);
+    } catch(err) {
+      return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": err.toString()})).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  // ===================================================================
+  // [ฟังก์ชันเดิมคงไว้ ปรับปรุงล็อกแท็บ] ดึงข้อมูลประวัติเพื่อแสดงผลในหน้าเว็บ
+  // ===================================================================
+  if (e.parameter.action === 'getData') {
+    try {
+      var sheet = ss.getSheetByName("ชีต1") || ss.getSheets()[0];
+      var data = sheet.getDataRange().getDisplayValues();
+      return ContentService.createTextOutput(JSON.stringify({"status": "success", "data": data})).setMimeType(ContentService.MimeType.JSON);
+    } catch (error) {
+      return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": error.toString()})).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  return HtmlService.createHtmlOutputFromFile('index')
+    .setTitle('แบบประเมินและกำกับติดตามมาตรฐาน IC')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
