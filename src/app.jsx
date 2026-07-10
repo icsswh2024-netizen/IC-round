@@ -1663,6 +1663,7 @@
          // --- รายการความเห็นการนิเทศ (ข้อชื่นชม/ข้อเสนอแนะ) ตามตัวกรอง Dashboard ---
          const commentRecords = useMemo(() => {
             return hospitalRecords.filter(r => {
+                if (dashType && r.assessmentType !== dashType) return false;
                 const d = new Date(r.id);
                 if (isNaN(d.getTime())) return false;
                 const rYear = d.getFullYear().toString();
@@ -1678,7 +1679,7 @@
                 if (filterAssessor !== "all" && r.assessorName !== filterAssessor) return false;
                 return (r.commendation && String(r.commendation).trim()) || (r.suggestion && String(r.suggestion).trim());
             }).sort((a, b) => b.id - a.id);
-         }, [hospitalRecords, filterYear, filterStartMonth, filterEndMonth, filterDeptType, filterDept, filterRole, filterAssessor]);
+         }, [hospitalRecords, dashType, filterYear, filterStartMonth, filterEndMonth, filterDeptType, filterDept, filterRole, filterAssessor]);
 
          // --- ข้อมูลสรุปจำนวนคน/เหตุการณ์ แบบตารางไขว้ (Cross Tabulation สำหรับทุกมาตรฐาน) ---
          const crossTabStats = useMemo(() => {
