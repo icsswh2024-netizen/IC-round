@@ -599,46 +599,54 @@
                           cellVal = cellVal.replace('!!FAIL!!', '');
                       }
 
-                      // จัดข้อความให้อยู่กึ่งกลางแนวตั้งของเซลล์เสมอ (padding บน=ล่างเท่ากัน + vertical-align: middle) ไม่ชิดขอบใดขอบหนึ่ง
-                      let cellStyle = "border: 1px solid #333; padding: 14px 10px; vertical-align: middle; line-height: 1.3;";
+                      // จัดข้อความให้อยู่กึ่งกลางแนวตั้งเสมอด้วย flex ที่ div ด้านใน (html2canvas เรนเดอร์ตรงกับเบราว์เซอร์
+                      // ต่างจาก vertical-align: middle ของ td ที่ html2canvas วางข้อความไทยเหลื่อมลงล่างเมื่อบันทึกเป็น PDF)
+                      let tdExtra = "";          // สี/พื้นหลัง/น้ำหนักฟอนต์ ที่ td (div ด้านในสืบทอด)
+                      let align = "center";       // การจัดแนวนอน: left | center
+                      let innerPad = "14px 10px"; // padding ของ div ด้านใน (บน=ล่าง จึงกึ่งกลาง)
+                      let lh = "1.3";
+                      let fs = "";                // font-size พิเศษ (ตารางครอสแท็บ)
+                      let whiteSpace = "normal";
 
                       // สำหรับตารางสรุปรวมท้ายสุดที่มีหลายคอลัมน์ ให้บีบช่องไฟและลดขนาดฟอนต์ลงเพื่อให้พอดีกับ A4
-                      if (maxCols > 6) {
-                          cellStyle = "border: 1px solid #333; padding: 7px 3px; vertical-align: middle; line-height: 1.2; font-size: 8pt; text-align: center;";
-                      }
+                      if (maxCols > 6) { innerPad = "7px 3px"; lh = "1.2"; fs = "font-size: 8pt;"; }
 
                       if (isHeaderRow) {
-                          cellStyle += " background-color: #e5e7eb; font-weight: bold; text-align: center;";
+                          tdExtra += " background-color: #e5e7eb; font-weight: bold;"; align = "center";
                       } else if (isSubHeader) {
                           if (typeof cellVal === 'string' && cellVal.indexOf('!!NARRATIVE!!') === 0) {
                               cellVal = cellVal.replace('!!NARRATIVE!!', '');
-                              cellStyle += " background-color: #ffffff; font-weight: normal; text-align: left; white-space: pre-wrap; padding: 8px 10px;";
+                              tdExtra += " background-color: #ffffff; font-weight: normal;"; align = "left"; whiteSpace = "pre-wrap"; innerPad = "8px 10px";
                           } else {
-                              cellStyle += " background-color: #f3f4f6; font-weight: bold; text-align: left;";
+                              tdExtra += " background-color: #f3f4f6; font-weight: bold;"; align = "left";
                           }
                       } else if (maxCols === 6) {
                           // ปรับรายการประเมินย่อย: อักษรตัวบางชิดขอบซ้ายทั้งหมด
-                          cellStyle += " font-weight: 300; text-align: left;";
+                          tdExtra += " font-weight: 300;"; align = "left";
                       } else if (maxCols <= 6) {
-                          if (cIdx === 0 && maxCols === 2) cellStyle += " font-weight: bold; background-color: #f9fafb;"; 
-                          else if (maxCols >= 3 && cIdx === 0) cellStyle += " text-align: left;";
-                          else if (maxCols >= 5 && cIdx === 1) cellStyle += " text-align: left;";
-                          else cellStyle += " text-align: center;";
+                          if (cIdx === 0 && maxCols === 2) { tdExtra += " font-weight: bold; background-color: #f9fafb;"; align = "left"; }
+                          else if (maxCols >= 3 && cIdx === 0) align = "left";
+                          else if (maxCols >= 5 && cIdx === 1) align = "left";
+                          else align = "center";
 
-                          if (String(cellVal).includes('%')) cellStyle += " font-weight: bold;";
-                          else if (cellVal === 'ปฏิบัติ' || cellVal === '✓') cellStyle += " color: #15803d; font-weight: bold;";
-                          else if (cellVal === 'ไม่ปฏิบัติ' || cellVal === '✗') cellStyle += " color: #b91c1c; font-weight: bold;";
-                          else if (cellVal === 'NA') cellStyle += " color: #6b7280;";
+                          if (String(cellVal).includes('%')) tdExtra += " font-weight: bold;";
+                          else if (cellVal === 'ปฏิบัติ' || cellVal === '✓') tdExtra += " color: #15803d; font-weight: bold;";
+                          else if (cellVal === 'ไม่ปฏิบัติ' || cellVal === '✗') tdExtra += " color: #b91c1c; font-weight: bold;";
+                          else if (cellVal === 'NA') tdExtra += " color: #6b7280;";
                       } else {
                           // จัดตำแหน่งเฉพาะสำหรับตารางรวมท้ายสุด (ครอสแท็บ) พร้อมใส่สีเมื่อไม่ผ่านเกณฑ์
-                          if (cIdx === 0) cellStyle += " text-align: left; font-weight: bold;";
+                          if (cIdx === 0) { align = "left"; tdExtra += " font-weight: bold;"; }
                           else {
-                              if (isFail) cellStyle += " font-weight: bold; color: #dc2626; background-color: #fee2e2;";
-                              else cellStyle += " font-weight: bold; color: #238885;";
+                              align = "center";
+                              if (isFail) tdExtra += " font-weight: bold; color: #dc2626; background-color: #fee2e2;";
+                              else tdExtra += " font-weight: bold; color: #238885;";
                           }
                       }
 
-                      tableHtml += `<td colspan="${colSpan}" style="${cellStyle}">${cellVal}</td>`;
+                      const justify = align === "left" ? "flex-start" : "center";
+                      const tdStyle = `border: 1px solid #333; padding: 0; height: 1px;${tdExtra}`;
+                      const innerStyle = `display: flex; align-items: center; justify-content: ${justify}; height: 100%; box-sizing: border-box; padding: ${innerPad}; line-height: ${lh}; white-space: ${whiteSpace}; text-align: ${align}; ${fs}`;
+                      tableHtml += `<td colspan="${colSpan}" style="${tdStyle}"><div style="${innerStyle}">${cellVal}</div></td>`;
                   }
                   tableHtml += `</tr>`;
               });
