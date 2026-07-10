@@ -599,12 +599,12 @@
                           cellVal = cellVal.replace('!!FAIL!!', '');
                       }
 
-                      // แก้ปัญหาฟอนต์ไทยชิดขอบล่างโดยการเพิ่ม padding-bottom ให้มากกว่า padding-top เพื่อดันข้อความขึ้นให้อยู่กึ่งกลาง
-                      let cellStyle = "border: 1px solid #333; padding: 10px 10px 18px 10px; vertical-align: middle; line-height: 1.3;";
-                      
+                      // จัดข้อความให้อยู่กึ่งกลางแนวตั้งของเซลล์เสมอ (padding บน=ล่างเท่ากัน + vertical-align: middle) ไม่ชิดขอบใดขอบหนึ่ง
+                      let cellStyle = "border: 1px solid #333; padding: 14px 10px; vertical-align: middle; line-height: 1.3;";
+
                       // สำหรับตารางสรุปรวมท้ายสุดที่มีหลายคอลัมน์ ให้บีบช่องไฟและลดขนาดฟอนต์ลงเพื่อให้พอดีกับ A4
                       if (maxCols > 6) {
-                          cellStyle = "border: 1px solid #333; padding: 5px 3px 9px 3px; vertical-align: middle; line-height: 1.2; font-size: 8pt; text-align: center;";
+                          cellStyle = "border: 1px solid #333; padding: 7px 3px; vertical-align: middle; line-height: 1.2; font-size: 8pt; text-align: center;";
                       }
 
                       if (isHeaderRow) {
@@ -612,7 +612,7 @@
                       } else if (isSubHeader) {
                           if (typeof cellVal === 'string' && cellVal.indexOf('!!NARRATIVE!!') === 0) {
                               cellVal = cellVal.replace('!!NARRATIVE!!', '');
-                              cellStyle += " background-color: #ffffff; font-weight: normal; text-align: left; white-space: pre-wrap; padding: 4px 10px 10px 10px;";
+                              cellStyle += " background-color: #ffffff; font-weight: normal; text-align: left; white-space: pre-wrap; padding: 8px 10px;";
                           } else {
                               cellStyle += " background-color: #f3f4f6; font-weight: bold; text-align: left;";
                           }
