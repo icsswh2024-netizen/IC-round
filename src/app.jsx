@@ -854,6 +854,8 @@
             items.push({ kind: 'item', id: it.id, text: it.text, w: 1 + Math.floor(len / 48) });
           });
         });
+        // เผื่อพื้นที่ท้ายฟอร์มให้เขียนข้อชื่นชม/ข้อเสนอแนะด้วยมือ (ไม่ให้ถูกตัดข้ามหน้า)
+        items.push({ kind: 'notes', w: 6 });
 
         // 2) แบ่งหน้า A4 โดยไม่ตัดกลางแถว (หน้าแรกเผื่อพื้นที่หัวกระดาษ)
         const BUDGET_FIRST = 19, BUDGET_REST = 25;
@@ -872,16 +874,21 @@
             <div class="cell c-ck">ไม่ปฏิบัติ</div>
             <div class="cell c-ck">NA</div>
           </div>`;
-        const renderRows = (rows) => rows.map(r => r.kind === 'section'
-          ? `<div class="grow"><div class="cell c-sec">${esc(r.title)}</div></div>`
-          : `<div class="grow">
+        const nlines = (n) => Array.from({ length: n }).map(() => '<div class="nline"></div>').join('');
+        const renderRows = (rows) => rows.map(r => {
+          if (r.kind === 'section') return `<div class="grow"><div class="cell c-sec">${esc(r.title)}</div></div>`;
+          if (r.kind === 'notes') return `<div class="grow"><div class="cell c-notes">
+              <div class="nh">ข้อชื่นชม</div>${nlines(2)}
+              <div class="nh">ข้อเสนอแนะ</div>${nlines(2)}
+            </div></div>`;
+          return `<div class="grow">
               <div class="cell c-id">${esc(r.id)}</div>
               <div class="cell c-text">${esc(r.text)}</div>
               <div class="cell c-ck">${box}</div>
               <div class="cell c-ck">${box}</div>
               <div class="cell c-ck">${box}</div>
-            </div>`
-        ).join('');
+            </div>`;
+        }).join('');
         const header = `<h1>แบบประเมินและกำกับติดตามมาตรฐาน IC ด้านการพยาบาล</h1>
           <div class="sub">โรงพยาบาลศรีสังวรสุโขทัย &nbsp;|&nbsp; แบบประเมิน: <b>${esc(type)}</b></div>
           <div class="info">
@@ -913,6 +920,10 @@
             .c-ck { flex:0 0 12%; justify-content:center; }
             .ghead .cell { background:#e5e7eb; font-weight:bold; justify-content:center; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .c-sec { flex:1 1 auto; background:#eef2f7; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .c-notes { flex:1 1 auto; flex-direction:column; align-items:stretch; justify-content:flex-start; padding:10px 12px; }
+            .nh { font-weight:bold; font-size:22px; margin:2px 0 6px; }
+            .nline { border-bottom:1px dotted #000; height:30px; }
+            .nline:last-child { margin-bottom:6px; }
             .box { flex:0 0 auto; width:16px; height:16px; border:1.5px solid #333; border-radius:3px; }
             .pageno { position:absolute; bottom:14px; right:40px; font-size:16px; }
             @media print {
