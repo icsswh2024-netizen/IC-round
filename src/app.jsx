@@ -645,7 +645,8 @@
 
                       const justify = align === "left" ? "flex-start" : "center";
                       const tdStyle = `border: 1px solid #333; padding: 0; height: 1px;${tdExtra}`;
-                      const innerStyle = `display: flex; align-items: center; justify-content: ${justify}; height: 100%; box-sizing: border-box; padding: ${innerPad}; line-height: ${lh}; white-space: ${whiteSpace}; text-align: ${align}; ${fs}`;
+                      // overflow-wrap: anywhere — บังคับตัดบรรทัดข้อความไทยยาว ๆ ที่ไม่มีเว้นวรรค ไม่ให้ล้นขอบเซลล์ถูกตัดหาย
+                      const innerStyle = `display: flex; align-items: center; justify-content: ${justify}; height: 100%; box-sizing: border-box; padding: ${innerPad}; line-height: ${lh}; white-space: ${whiteSpace}; overflow-wrap: anywhere; word-break: break-word; text-align: ${align}; ${fs}`;
                       tableHtml += `<td colspan="${colSpan}" style="${tdStyle}"><div style="${innerStyle}">${cellVal}</div></td>`;
                   }
                   tableHtml += `</tr>`;
