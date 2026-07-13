@@ -854,9 +854,6 @@
             items.push({ kind: 'item', id: it.id, text: it.text, w: 1 + Math.floor(len / 48) });
           });
         });
-        // เผื่อพื้นที่ท้ายฟอร์มให้เขียนข้อชื่นชม/ข้อเสนอแนะด้วยมือ (ไม่ให้ถูกตัดข้ามหน้า)
-        items.push({ kind: 'notes', w: 6 });
-
         // 2) แบ่งหน้า A4 โดยไม่ตัดกลางแถว (หน้าแรกเผื่อพื้นที่หัวกระดาษ)
         const BUDGET_FIRST = 19, BUDGET_REST = 25;
         const pages = []; let cur = [], used = 0, budget = BUDGET_FIRST;
@@ -867,6 +864,13 @@
         if (cur.length) pages.push(cur);
         if (pages.length === 0) pages.push([]);
 
+        // ส่วนพรรณนาข้อชื่นชม/ข้อเสนอแนะ (เขียนด้วยมือ) วางต่อท้ายหน้าสุดท้าย หรือขึ้นหน้าใหม่ถ้าที่ไม่พอ — ไม่อยู่ในตาราง
+        const NOTES_W = 6;
+        const lastBudget = pages.length === 1 ? BUDGET_FIRST : BUDGET_REST;
+        const lastUsed = pages[pages.length - 1].reduce((s, r) => s + (r.w || 1), 0);
+        const notesOwnPage = (lastUsed + NOTES_W) > lastBudget;
+        const totalPages = pages.length + (notesOwnPage ? 1 : 0);
+
         const headRow = `<div class="grow ghead">
             <div class="cell c-id">ข้อ</div>
             <div class="cell c-text">รายการประเมิน</div>
@@ -875,31 +879,39 @@
             <div class="cell c-ck">NA</div>
           </div>`;
         const nlines = (n) => Array.from({ length: n }).map(() => '<div class="nline"></div>').join('');
-        const renderRows = (rows) => rows.map(r => {
-          if (r.kind === 'section') return `<div class="grow"><div class="cell c-sec">${esc(r.title)}</div></div>`;
-          if (r.kind === 'notes') return `<div class="grow"><div class="cell c-notes">
-              <div class="nh">ข้อชื่นชม</div>${nlines(2)}
-              <div class="nh">ข้อเสนอแนะ</div>${nlines(2)}
-            </div></div>`;
-          return `<div class="grow">
+        const renderRows = (rows) => rows.map(r => r.kind === 'section'
+          ? `<div class="grow"><div class="cell c-sec">${esc(r.title)}</div></div>`
+          : `<div class="grow">
               <div class="cell c-id">${esc(r.id)}</div>
               <div class="cell c-text">${esc(r.text)}</div>
               <div class="cell c-ck">${box}</div>
               <div class="cell c-ck">${box}</div>
               <div class="cell c-ck">${box}</div>
-            </div>`;
-        }).join('');
+            </div>`
+        ).join('');
+        // พรรณนา (ไม่ใช่ตาราง) — หัวข้อหนา + บรรทัดเส้นประให้เขียนด้วยมือ
+        const notesHTML = `<div class="notes">
+            <div class="nh">ข้อชื่นชม</div>${nlines(3)}
+            <div class="nh">ข้อเสนอแนะ</div>${nlines(3)}
+          </div>`;
         const header = `<h1>แบบประเมินและกำกับติดตามมาตรฐาน IC ด้านการพยาบาล</h1>
           <div class="sub">โรงพยาบาลศรีสังวรสุโขทัย &nbsp;|&nbsp; แบบประเมิน: <b>${esc(type)}</b></div>
           <div class="info">
             หน่วยงาน <span class="fill" style="min-width:180px;"></span> &nbsp;&nbsp; ประเภท <span class="fill" style="min-width:90px;"></span><br>
             ผู้ประเมิน <span class="fill" style="min-width:170px;"></span> &nbsp;&nbsp; วันที่ <span class="fill" style="min-width:120px;"></span> &nbsp;&nbsp; จำนวนผู้รับประเมิน <span class="fill" style="min-width:60px;"></span> คน/เหตุการณ์
           </div>`;
-        const pageDivs = pages.map((rows, i) => `<div class="pdf-page">
+        const pageDivs = pages.map((rows, i) => {
+          const isLast = i === pages.length - 1;
+          return `<div class="pdf-page">
             ${i === 0 ? header : ''}
             <div class="gtable">${headRow}${renderRows(rows)}</div>
-            <div class="pageno">หน้า ${i + 1}/${pages.length}</div>
-          </div>`).join('');
+            ${(isLast && !notesOwnPage) ? notesHTML : ''}
+            <div class="pageno">หน้า ${i + 1}/${totalPages}</div>
+          </div>`;
+        }).join('') + (notesOwnPage ? `<div class="pdf-page">
+            ${notesHTML}
+            <div class="pageno">หน้า ${totalPages}/${totalPages}</div>
+          </div>` : '');
 
         return `<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>แบบฟอร์มเปล่า - ${esc(type)}</title>
           <style>
@@ -920,10 +932,10 @@
             .c-ck { flex:0 0 12%; justify-content:center; }
             .ghead .cell { background:#e5e7eb; font-weight:bold; justify-content:center; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .c-sec { flex:1 1 auto; background:#eef2f7; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-            .c-notes { flex:1 1 auto; flex-direction:column; align-items:stretch; justify-content:flex-start; padding:10px 12px; }
-            .nh { font-weight:bold; font-size:22px; margin:2px 0 6px; }
-            .nline { border-bottom:1px dotted #000; height:30px; }
-            .nline:last-child { margin-bottom:6px; }
+            .notes { margin-top:18px; }
+            .nh { font-weight:bold; font-size:22px; margin:14px 0 8px; }
+            .notes .nh:first-child { margin-top:0; }
+            .nline { border-bottom:1px dotted #000; height:32px; }
             .box { flex:0 0 auto; width:16px; height:16px; border:1.5px solid #333; border-radius:3px; }
             .pageno { position:absolute; bottom:14px; right:40px; font-size:16px; }
             @media print {
