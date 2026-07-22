@@ -1187,6 +1187,7 @@
 
       useEffect(() => { if (viewMode === 'hospital') handleFetchBackup(true, true); }, [viewMode]);
       useEffect(() => { if (viewMode === 'history' && isHistoryAuthenticated) handleFetchBackup(true, true); }, [viewMode, isHistoryAuthenticated]);
+      useEffect(() => { if (viewMode === 'icn') handleFetchBackup(true, true); }, [viewMode]);
 
       const allPersonScores = useMemo(() => {
         const scoresArray = [];
@@ -2493,9 +2494,185 @@
          );
       }
 
+      // ===================================================================
+      // เมนู "การนิเทศ ICN": แสดงหน่วยงานที่ประเมินแล้ว + พิมพ์ผลการประเมินรายครั้ง
+      // ===================================================================
+      const ICNView = () => {
+         const [icnSearch, setIcnSearch] = useState("");
+         const [icnYear, setIcnYear] = useState("all");
+         const [expanded, setExpanded] = useState({});
+
+         const icnYears = useMemo(() => {
+            const ys = new Set();
+            hospitalRecords.forEach(r => { const d = new Date(r.id); if (!isNaN(d.getTime())) ys.add(d.getFullYear().toString()); });
+            return Array.from(ys).sort().reverse();
+         }, [hospitalRecords]);
+
+         // จัดกลุ่มบันทึกตามหน่วยงาน (เฉพาะหน่วยงานที่ถูกประเมินแล้ว)
+         const deptGroups = useMemo(() => {
+            const map = {};
+            hospitalRecords.forEach(r => {
+               if (!r.department || r.department === '-') return;
+               const d = new Date(r.id);
+               const y = isNaN(d.getTime()) ? "" : d.getFullYear().toString();
+               if (icnYear !== "all" && y !== icnYear) return;
+               if (!map[r.department]) map[r.department] = [];
+               map[r.department].push(r);
+            });
+            let arr = Object.keys(map).map(dept => {
+               const recs = map[dept].slice().sort((a, b) => b.id - a.id);
+               let e = 0, f = 0;
+               recs.forEach(r => { const p = parseFloat(r.overallSummaryData?.grandSummary?.percentage || 0); if (!isNaN(p)) { e += p; f++; } });
+               return { department: dept, records: recs, count: recs.length, deptType: recs[0]?.deptType || '-', avg: f > 0 ? (e / f).toFixed(1) : '0' };
+            });
+            const q = icnSearch.trim().toLowerCase();
+            if (q) arr = arr.filter(g => g.department.toLowerCase().includes(q));
+            arr.sort((a, b) => a.department.localeCompare(b.department, 'th'));
+            return arr;
+         }, [hospitalRecords, icnYear, icnSearch]);
+
+         const totalAssessments = useMemo(() => deptGroups.reduce((s, g) => s + g.count, 0), [deptGroups]);
+
+         // สร้างข้อมูลผลการประเมิน "รายครั้ง" สำหรับทำ PDF
+         const getRecordResultData = (r) => {
+            const wsData = [];
+            wsData.push(["สรุปผลการประเมิน", "โรงพยาบาลศรีสังวรสุโขทัย"]); // มาร์กเกอร์ให้ข้ามหัวเรื่องซ้ำ
+            wsData.push([]);
+            const dateStr = r.timestampStr || new Date(r.id).toLocaleString('th-TH');
+            wsData.push(["ข้อมูลการประเมิน"]);
+            wsData.push(["แบบประเมิน", r.assessmentType || '-']);
+            wsData.push(["หน่วยงานที่รับการประเมิน", r.department || '-']);
+            wsData.push(["ประเภทหน่วยงาน", r.deptType || '-']);
+            if (r.evaluateeRole) wsData.push(["ตำแหน่งผู้รับการประเมิน", r.evaluateeRole]);
+            wsData.push(["ผู้ประเมิน (ICN)", r.assessorName || '-']);
+            wsData.push(["วันที่ประเมิน", dateStr]);
+            wsData.push(["จำนวนผู้รับการประเมิน", (r.numPeople || '-') + " คน/เหตุการณ์"]);
+            wsData.push(["ร้อยละเฉลี่ยรวม", (r.overallSummaryData?.grandSummary?.percentage || '0') + "%"]);
+
+            const secs = r.overallSummaryData?.aggSectionScores || [];
+            const hasItems = secs.some(s => (s.items || []).length > 0);
+            if (hasItems) {
+               wsData.push([]);
+               wsData.push(["รายการประเมิน", "ปฏิบัติ", "ไม่ปฏิบัติ", "ร้อยละ"]);
+               secs.forEach(sec => {
+                  wsData.push([sec.title]);
+                  (sec.items || []).forEach(it => {
+                     wsData.push([`${it.id}  ${it.text}`, (it.done != null ? it.done : 0), (it.notDone != null ? it.notDone : 0), (it.percent != null ? it.percent : 0) + "%"]);
+                  });
+               });
+               wsData.push([]);
+               wsData.push(["สรุปคะแนนรายหมวด", "คะแนนเต็ม", "คะแนนที่ได้", "ร้อยละเฉลี่ย"]);
+               secs.forEach(sec => wsData.push([sec.title, sec.fullScore || 0, sec.earnedScore || 0, (sec.percentage || 0) + "%"]));
+               const g = r.overallSummaryData.grandSummary || {};
+               wsData.push(["รวมทั้งหมด", g.fullScore || 0, g.earnedScore || 0, (g.percentage || 0) + "%"]);
+            }
+
+            if ((r.commendation && String(r.commendation).trim()) || (r.suggestion && String(r.suggestion).trim())) {
+               wsData.push([]);
+               wsData.push(["สรุปความเห็นการนิเทศ (ข้อชื่นชม / ข้อเสนอแนะ)"]);
+               if (r.commendation && String(r.commendation).trim()) wsData.push(['!!NARRATIVE!!💚 ข้อชื่นชม: ' + r.commendation]);
+               if (r.suggestion && String(r.suggestion).trim()) wsData.push(['!!NARRATIVE!!📝 ข้อเสนอแนะ: ' + r.suggestion]);
+            }
+            return wsData;
+         };
+
+         const handlePrintRecord = (r) => {
+            const wsData = getRecordResultData(r);
+            const nm = String(r.assessorName || '').trim();
+            const signers = (signatures || []).filter(s => String(s.name).trim() === nm);
+            const html = buildHTMLFromData(wsData, "สรุปผลการประเมินการนิเทศ IC", `${r.department || ''}${r.assessmentType ? ' · ' + r.assessmentType : ''}`, buildSignatureHtml(signers));
+            setPdfPreviewState({ isOpen: true, htmlContent: html, filename: `ผลการประเมิน_${r.department || ''}_${r.assessmentType || ''}_${new Date(r.id).getTime()}.pdf` });
+         };
+
+         return (
+            <div className="flex flex-col items-center w-full">
+               {isFetchingBackup && hospitalRecords.length === 0 && (
+                  <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-gray-200 w-full max-w-6xl mx-auto mt-8 flex flex-col items-center px-4">
+                     <Loader2 className="w-12 h-12 animate-spin text-[#238885] mb-4" />
+                     <h2 className="text-2xl font-bold text-slate-800">กำลังดึงข้อมูลจาก Cloud...</h2>
+                  </div>
+               )}
+
+               <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200 mt-8 mb-4 w-full max-w-6xl mx-auto px-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 border-b pb-4">
+                     <div className="flex items-center gap-3 text-slate-800 font-bold text-xl">
+                        <Building2 className="w-7 h-7 text-[#16bba6]" /> การนิเทศ ICN — หน่วยงานที่ประเมินแล้ว
+                     </div>
+                     <button onClick={() => handleFetchBackup(false, false)} disabled={isFetchingBackup} className={`text-white bg-[#238885] hover:bg-[#16bba6] px-5 py-3 rounded-xl text-base flex items-center justify-center gap-2 transition-colors font-bold shadow-md ${isFetchingBackup ? 'opacity-50 cursor-not-allowed' : ''}`}><Loader2 className={`w-5 h-5 animate-spin ${!isFetchingBackup && 'hidden'}`} /><CloudDownload className={`w-5 h-5 ${isFetchingBackup && 'hidden'}`} /> {isFetchingBackup ? 'กำลังดึงข้อมูล...' : 'ดึงข้อมูลจาก Cloud'}</button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                     <div className="sm:col-span-2">
+                        <label className="block text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wide">ค้นหาหน่วยงาน</label>
+                        <div className="relative">
+                           <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                           <input value={icnSearch} onChange={(e) => setIcnSearch(e.target.value)} placeholder="พิมพ์ชื่อหน่วยงาน..." className="w-full pl-11 pr-3 py-3 border-2 border-gray-200 rounded-xl text-base font-bold text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-gray-50 transition-colors shadow-sm" />
+                        </div>
+                     </div>
+                     <div>
+                        <label className="block text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wide">ปี (พ.ศ.)</label>
+                        <select value={icnYear} onChange={(e) => setIcnYear(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-xl text-base font-bold text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-white transition-colors shadow-sm"><option value="all">ทุกปี</option>{icnYears.map(y => <option key={y} value={y}>{parseInt(y) + 543}</option>)}</select>
+                     </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-3 text-sm font-bold">
+                     <span className="bg-[#16bba6]/10 text-[#0f8a7c] px-4 py-2 rounded-xl">หน่วยงานที่ประเมินแล้ว: {deptGroups.length}</span>
+                     <span className="bg-[#f1a164]/10 text-[#bd570d] px-4 py-2 rounded-xl">การประเมินทั้งหมด: {totalAssessments} ครั้ง</span>
+                  </div>
+               </div>
+
+               <div className="w-full max-w-6xl mx-auto px-4 flex flex-col gap-4 pb-10">
+                  {deptGroups.length === 0 ? (
+                     <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-16 text-center text-slate-500 font-medium text-lg">ยังไม่มีหน่วยงานที่ถูกประเมิน หรือไม่ตรงกับเงื่อนไขที่ค้นหา</div>
+                  ) : deptGroups.map(g => {
+                     const isOpen = !!expanded[g.department];
+                     const scoreColor = getScoreLevelColor(g.avg);
+                     return (
+                        <div key={g.department} className="bg-white rounded-3xl shadow-sm border-2 border-gray-200 overflow-hidden">
+                           <button onClick={() => setExpanded(prev => ({ ...prev, [g.department]: !prev[g.department] }))} className="w-full flex items-center justify-between gap-4 p-5 sm:p-6 text-left hover:bg-slate-50 transition-colors">
+                              <div className="flex items-center gap-4 min-w-0">
+                                 <span className="shrink-0 w-11 h-11 flex items-center justify-center rounded-2xl bg-[#285c6c]/10 text-[#285c6c]"><Building2 className="w-6 h-6" /></span>
+                                 <div className="min-w-0">
+                                    <div className="font-black text-lg sm:text-xl text-[#32355c] truncate">{g.department}</div>
+                                    <div className="text-sm text-slate-500 font-medium">{g.deptType} · ประเมิน {g.count} ครั้ง</div>
+                                 </div>
+                              </div>
+                              <div className="flex items-center gap-4 shrink-0">
+                                 <div className="text-right">
+                                    <div className={`text-2xl font-black ${scoreColor.text}`}>{g.avg}%</div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">เฉลี่ย</div>
+                                 </div>
+                                 <ChevronDown className={`w-6 h-6 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                              </div>
+                           </button>
+                           {isOpen && (
+                              <div className="border-t border-gray-100 p-4 sm:p-5 bg-slate-50/50 flex flex-col gap-3">
+                                 {g.records.map(r => {
+                                    const dateStr = new Date(r.id); const ds = isNaN(dateStr.getTime()) ? (r.timestampStr || '-') : dateStr.toLocaleString('th-TH');
+                                    const rc = getScoreLevelColor(r.overallSummaryData?.grandSummary?.percentage || 0);
+                                    return (
+                                       <div key={r.id} className="bg-white rounded-2xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                          <div className="min-w-0">
+                                             <div className="font-black text-[#285c6c] text-base sm:text-lg">{r.assessmentType || '-'}</div>
+                                             <div className="text-sm text-slate-500 font-medium">{ds} · ผู้ประเมิน: {r.assessorName || '-'} · {r.numPeople || '-'} คน/เหตุการณ์</div>
+                                          </div>
+                                          <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+                                             <span className={`text-xl font-black ${rc.text}`}>{r.overallSummaryData?.grandSummary?.percentage || '0'}%</span>
+                                             <button onClick={() => handlePrintRecord(r)} disabled={isGeneratingPDF} className={`text-white px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 font-bold shadow-md transition-colors ${isGeneratingPDF ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#f1a164] hover:bg-[#de8f55]'}`}><Printer className="w-5 h-5" /> พิมพ์ผลการประเมิน</button>
+                                          </div>
+                                       </div>
+                                    );
+                                 })}
+                              </div>
+                           )}
+                        </div>
+                     );
+                  })}
+               </div>
+            </div>
+         );
+      };
+
       const HistoryView = () => {
-         const [loginUser, setLoginUser] = useState("");
-         const [loginPass, setLoginPass] = useState("");
+         const [loginUser, setLoginUser] = useState("");         const [loginPass, setLoginPass] = useState("");
          const [loginErr, setLoginErr] = useState("");
 
          const [filterYear, setFilterYear] = useState("all");
@@ -3028,13 +3205,14 @@
                     <div className="flex gap-3 w-full md:w-auto justify-center">
                        <button onClick={() => setViewMode('department')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'department' ? 'bg-[#16bba6] text-white shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><FileText className="w-6 h-6" /> หน้าประเมิน</button>
                        <button onClick={() => setViewMode('hospital')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'hospital' ? 'bg-[#e9c460] text-[#32355c] shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><LayoutDashboard className="w-6 h-6" /> Dashboard</button>
+                       <button onClick={() => setViewMode('icn')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'icn' ? 'bg-[#16bba6] text-white shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><Building2 className="w-6 h-6" /> การนิเทศ ICN</button>
                        <button onClick={() => setViewMode('history')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'history' ? 'bg-[#f1a164] text-white shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><Clock className="w-6 h-6" /> ประวัติ</button>
                     </div>
                  </div>
               </div>
            </nav>
 
-           {viewMode === 'hospital' ? <HospitalSummaryView /> : viewMode === 'history' ? <HistoryView /> : (
+           {viewMode === 'hospital' ? <HospitalSummaryView /> : viewMode === 'icn' ? <ICNView /> : viewMode === 'history' ? <HistoryView /> : (
               <div className="flex flex-col items-center w-full">
                 <div id="report-content" className="w-full max-w-7xl bg-white pb-10 print:bg-white rounded-3xl mt-8 shadow-sm border border-gray-200">
                   <header className="bg-gradient-to-r from-[#32355c] to-[#285c6c] rounded-t-3xl text-white shadow-md print:bg-transparent print:text-black print:border-none print:shadow-none relative">
