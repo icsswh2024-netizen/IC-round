@@ -281,6 +281,7 @@
       const [isLoadingChecklists, setIsLoadingChecklists] = useState(true);
       const [isSyncingChecklist, setIsSyncingChecklist] = useState(false);
       const [assessorList, setAssessorList] = useState(FALLBACK_ASSESSOR_LIST);
+      const [signatures, setSignatures] = useState([]); // รายชื่อผู้ลงนามทีม IPC (ชื่อ/ตำแหน่ง/กลุ่มงาน/รูปลายเซ็น base64) จากชีต "ลงนาม"
 
       // --- ตัวแปรสำหรับระบบแสดงพรีวิวและดาวน์โหลด PDF ---
       const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -424,6 +425,18 @@
         }
       }, [viewMode]);
 
+      // ดึงรายชื่อ + รูปลายเซ็นทีม IPC จากชีต "ลงนาม" (ผ่าน Apps Script — คืนรูปเป็น base64 กัน CORS ตอนทำ PDF) ครั้งเดียวตอนโหลด
+      useEffect(() => {
+        (async () => {
+          try {
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL === "YOUR_WEB_APP_URL_HERE") return;
+            const res = await fetch(GOOGLE_SCRIPT_URL + "?action=getSignatures");
+            const j = await res.json();
+            if (j && j.status === 'success' && Array.isArray(j.data)) setSignatures(j.data);
+          } catch (e) { /* เงียบ: ถ้าดึงลายเซ็นไม่ได้ เอกสารก็ยังพิมพ์ได้ตามปกติ */ }
+        })();
+      }, []);
+
       // --- ฟังก์ชันหลักสำหรับแปลง HTML ให้เป็นภาพ JPG แล้วนำไปวางลงบนหน้า PDF (WYSIWYG 100%) ---
       const triggerPDFDownloadFromPreview = () => {
         setIsGeneratingPDF(true);
@@ -498,7 +511,28 @@
       };
 
       // --- ฟังก์ชันสร้างโครงสร้าง HTML Table แบ่งเป็นหน้า A4 (Pagination) พร้อมทวน Header ---
-      const buildHTMLFromData = (wsData, reportTitle, subtitle = '') => {
+      // สร้าง HTML ช่องลงนามทีม IPC (แสดงเฉพาะผู้ประเมินจริงที่มีชื่อในชีต "ลงนาม") ต่อท้ายเอกสาร
+      const buildSignatureHtml = (signers) => {
+          if (!signers || signers.length === 0) return '';
+          const blocks = signers.map(s => {
+              const img = s.image
+                  ? `<img src="${s.image}" style="max-height:64px; max-width:210px; object-fit:contain; display:block; margin:0 auto 2px;" />`
+                  : `<div style="height:64px;"></div>`;
+              return `<div style="text-align:center; min-width:250px; margin:0 18px 16px;">
+                  ${img}
+                  <div style="border-top:1px dotted #000; width:230px; margin:0 auto; padding-top:6px; font-size:13pt; color:#000;">( ${s.name} )</div>
+                  <div style="font-size:12pt; color:#000; margin-top:2px;">${s.position || ''}</div>
+                  <div style="font-size:12pt; color:#000;">${s.group || ''}</div>
+                  <div style="font-size:12pt; color:#000; margin-top:2px;">ผู้ประเมิน / ผู้นิเทศ</div>
+                </div>`;
+          }).join('');
+          return `<div style="margin-top:34px; font-family:'Sarabun', sans-serif; page-break-inside:avoid;">
+              <div style="font-size:13pt; font-weight:bold; color:#000; margin-bottom:16px;">ลงนามโดยทีมป้องกันและควบคุมการติดเชื้อ (IPC)</div>
+              <div style="display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-start;">${blocks}</div>
+            </div>`;
+      };
+
+      const buildHTMLFromData = (wsData, reportTitle, subtitle = '', signatureHtml = '') => {
           // สไตล์สำหรับหน้า A4 (794px x 1123px) ปรับ Padding ด้านล่าง (60px) ให้กว้างขึ้นเพื่อป้องกันตกขอบ
           const a4Style = "width: 794px; height: 1123px; background: white; padding: 35px 40px 60px 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); margin: 0 auto; box-sizing: border-box; position: relative; overflow: hidden; display: flex; flex-direction: column;";
           
@@ -792,6 +826,19 @@
                   currentRowCount += groupWeightTotal + 1; // +1 เผื่อระยะช่องไฟใต้ตาราง
               }
           });
+
+          // แนบช่องลงนามท้ายเอกสาร: วางต่อหน้าสุดท้ายถ้าที่พอ ไม่พอก็ขึ้นหน้าใหม่ (กันถูกตัดกลางบล็อก)
+          if (signatureHtml) {
+              const sigWeight = Math.ceil((signatureHtml.match(/min-width:250px/g) || ['']).length / 2) * 4 + 3;
+              if (currentRowCount + sigWeight > getMaxRows()) {
+                  html += currentPageHtml + closePage();
+                  isFirstPage = false;
+                  pageNum++;
+                  currentPageHtml = createPageHeader(isFirstPage, pageNum);
+                  currentRowCount = 0;
+              }
+              currentPageHtml += signatureHtml;
+          }
 
           html += currentPageHtml + closePage(); // ปิดหน้าสุดท้าย
           html += `</div>`;
@@ -1718,6 +1765,29 @@
             }).sort((a, b) => b.id - a.id);
          }, [hospitalRecords, dashType, filterYear, filterStartMonth, filterEndMonth, filterDeptType, filterDept, filterRole, filterAssessor]);
 
+         // --- ผู้ลงนามของเอกสารนี้: เฉพาะผู้ประเมินจริงในบันทึกที่ตรงตัวกรอง และมีชื่อในชีต "ลงนาม" ---
+         const docSigners = useMemo(() => {
+            if (!signatures || signatures.length === 0) return [];
+            const names = new Set();
+            hospitalRecords.forEach(r => {
+                if (dashType && r.assessmentType !== dashType) return;
+                const d = new Date(r.id);
+                if (isNaN(d.getTime())) return;
+                const rYear = d.getFullYear().toString();
+                const rMonthInt = d.getMonth() + 1;
+                if (filterYear !== "all" && rYear !== filterYear) return;
+                if (filterStartMonth !== "all" && filterEndMonth !== "all") { if (rMonthInt < parseInt(filterStartMonth) || rMonthInt > parseInt(filterEndMonth)) return; }
+                else if (filterStartMonth !== "all") { if (rMonthInt < parseInt(filterStartMonth)) return; }
+                else if (filterEndMonth !== "all") { if (rMonthInt > parseInt(filterEndMonth)) return; }
+                if (filterDeptType !== "all" && r.deptType !== filterDeptType) return;
+                if (filterDept !== "all" && r.department !== filterDept) return;
+                if (filterRole !== "all" && r.evaluateeRole !== filterRole) return;
+                if (filterAssessor !== "all" && r.assessorName !== filterAssessor) return;
+                if (r.assessorName && r.assessorName !== '-') names.add(String(r.assessorName).trim());
+            });
+            return signatures.filter(s => names.has(String(s.name).trim()));
+         }, [signatures, hospitalRecords, dashType, filterYear, filterStartMonth, filterEndMonth, filterDeptType, filterDept, filterRole, filterAssessor]);
+
          // --- ข้อมูลสรุปจำนวนคน/เหตุการณ์ แบบตารางไขว้ (Cross Tabulation สำหรับทุกมาตรฐาน) ---
          const crossTabStats = useMemo(() => {
             const filteredForAllStandards = hospitalRecords.filter(r => {
@@ -2033,7 +2103,7 @@
          const handleGenerateHospitalPDF = () => {
             const wsData = getHospitalExcelData(true);
             if (wsData.length === 0) return;
-            const html = buildHTMLFromData(wsData, "<span style='font-size: 16pt; line-height: 1.3;'>สรุปผลการประเมินตามมาตรฐาน<br>การควบคุมและป้องกันการติดเชื้อในโรงพยาบาล</span>", "โรงพยาบาลศรีสังวรสุโขทัย");
+            const html = buildHTMLFromData(wsData, "<span style='font-size: 16pt; line-height: 1.3;'>สรุปผลการประเมินตามมาตรฐาน<br>การควบคุมและป้องกันการติดเชื้อในโรงพยาบาล</span>", "โรงพยาบาลศรีสังวรสุโขทัย", buildSignatureHtml(docSigners));
             setPdfPreviewState({ 
                 isOpen: true, 
                 htmlContent: html, 
@@ -2636,7 +2706,12 @@
          const handleGenerateHistoryPDF = () => {
             const wsData = getHistoryExcelData();
             if (wsData.length === 0) return;
-            const html = buildHTMLFromData(wsData, "ประวัติการบันทึกการประเมินมาตรฐาน IC");
+            // ผู้ลงนามของเอกสารประวัติ: เฉพาะผู้ประเมินจริงในรายการที่ตรงตัวกรอง และมีชื่อในชีต "ลงนาม"
+            const historySigners = (signatures || []).filter(s => {
+                const nm = String(s.name).trim();
+                return filteredRecords.some(r => String(r.assessorName || '').trim() === nm);
+            });
+            const html = buildHTMLFromData(wsData, "ประวัติการบันทึกการประเมินมาตรฐาน IC", '', buildSignatureHtml(historySigners));
             setPdfPreviewState({
                 isOpen: true,
                 htmlContent: html,

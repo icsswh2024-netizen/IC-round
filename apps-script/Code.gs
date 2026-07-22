@@ -227,6 +227,58 @@ function doGet(e) {
   }
 
   // ===================================================================
+  // [ฟังก์ชันเพิ่มใหม่] ดึงรายชื่อผู้ลงนามทีม IPC จากแท็บ "ลงนาม"
+  //   คืน ชื่อ/ตำแหน่ง/กลุ่มงาน + รูปลายเซ็นจาก Google Drive แปลงเป็น base64 (data URI)
+  //   เหตุผลที่ต้องแปลง base64: html2canvas ตอนบันทึก PDF โหลดรูปจาก Drive ตรง ๆ ไม่ได้ (ติด CORS)
+  // ===================================================================
+  if (e.parameter.action === 'getSignatures') {
+    try {
+      var sigSheet = ss.getSheetByName("ลงนาม");
+      var out = [];
+      if (sigSheet) {
+        var vals = sigSheet.getDataRange().getValues();
+        var head = vals.length ? vals[0].map(function (h) { return String(h).trim(); }) : [];
+        function findCol(keys, def) {
+          for (var c = 0; c < head.length; c++) {
+            for (var k = 0; k < keys.length; k++) {
+              if (head[c].toLowerCase().indexOf(keys[k]) > -1) return c;
+            }
+          }
+          return def;
+        }
+        var cName = findCol(["ชื่อ"], 0);
+        var cPos  = findCol(["ตำแหน่ง"], 1);
+        var cGrp  = findCol(["กลุ่มงาน"], 2);
+        var cLink = findCol(["link", "ลิงก์", "ลายเซ็น", "รูป"], 3);
+        for (var i = 1; i < vals.length; i++) {
+          var name = String(vals[i][cName] || "").trim();
+          if (!name) continue;
+          var link = String(vals[i][cLink] || "").trim();
+          var img = "";
+          if (link) {
+            try {
+              var m = link.match(/[-\w]{25,}/); // สกัด File ID จากลิงก์ Google Drive
+              if (m) {
+                var blob = DriveApp.getFileById(m[0]).getBlob();
+                img = "data:" + blob.getContentType() + ";base64," + Utilities.base64Encode(blob.getBytes());
+              }
+            } catch (e2) { img = ""; }
+          }
+          out.push({
+            name: name,
+            position: String(vals[i][cPos] || "").trim(),
+            group: String(vals[i][cGrp] || "").trim(),
+            image: img
+          });
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({"status": "success", "data": out})).setMimeType(ContentService.MimeType.JSON);
+    } catch (error) {
+      return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": error.toString()})).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  // ===================================================================
   // [ฟังก์ชันเดิมคงไว้ ปรับปรุงล็อกแท็บ] ดึงข้อมูลประวัติเพื่อแสดงผลในหน้าเว็บ
   // ===================================================================
   if (e.parameter.action === 'getData') {
