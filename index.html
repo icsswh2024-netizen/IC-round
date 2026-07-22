@@ -4252,10 +4252,11 @@ function App() {
       return Array.from(ys).sort().reverse();
     }, [hospitalRecords]);
 
-    // จัดกลุ่มบันทึกตามหน่วยงาน (เฉพาะหน่วยงานที่ถูกประเมินแล้ว)
+    // จัดกลุ่มบันทึกตามหน่วยงาน (เฉพาะที่ผู้ประเมินชื่อ "ICN" และหน่วยงานที่ถูกประเมินแล้ว)
     const deptGroups = useMemo(() => {
       const map = {};
       hospitalRecords.forEach(r => {
+        if (String(r.assessorName || '').trim().toLowerCase() !== 'icn') return; // เฉพาะผู้ประเมินชื่อ ICN
         if (!r.department || r.department === '-') return;
         const d = new Date(r.id);
         const y = isNaN(d.getTime()) ? "" : d.getFullYear().toString();
