@@ -3057,19 +3057,75 @@
             XLSX.writeFile(wb, `ประวัติการประเมิน_${new Date().getTime()}.xlsx`);
          };
 
+         // สร้างข้อมูล PDF ของ "สรุปภาพรวม" (ตารางคะแนนเฉลี่ยตามข้อมูลที่กรอง + ขอบเขตแท็บ)
+         const getHistorySummaryData = () => {
+            const wsData = [];
+            wsData.push(["สรุปผลการประเมินภาพรวม", "โรงพยาบาลศรีสังวรสุโขทัย"]); // มาร์กเกอร์ให้ข้ามหัวเรื่องซ้ำ
+            wsData.push([]);
+            if (!summaryStats || summaryStats.totalRecords === 0) return wsData;
+            wsData.push(["ข้อมูลภาพรวม"]);
+            wsData.push(["จำนวนการประเมินทั้งหมด", summaryStats.totalRecords + " ครั้ง"]);
+            wsData.push(["จำนวนผู้รับการประเมินรวม", summaryStats.totalPeople + " คน/เหตุการณ์"]);
+            wsData.push(["คะแนนเฉลี่ยรวมทุกประเภท", fmtPct(summaryStats.overallAvg) + "%"]);
+            if (summaryStats.typeAverages && summaryStats.typeAverages.length > 0) {
+               wsData.push([]);
+               wsData.push(["คะแนนเฉลี่ยแยกตามประเภทแบบประเมิน", "ประเมิน (ครั้ง)", "ผู้รับประเมิน", "ร้อยละเฉลี่ย"]);
+               summaryStats.typeAverages.forEach(s => wsData.push([s.type, s.count, s.peopleCount, fmtPct(s.avg) + "%"]));
+            }
+            if (summaryStats.deptTypeAveragesByType) {
+               Object.keys(summaryStats.deptTypeAveragesByType).forEach(type => {
+                  const arr = summaryStats.deptTypeAveragesByType[type];
+                  if (!arr || arr.length === 0) return;
+                  wsData.push([]);
+                  wsData.push([`คะแนนเฉลี่ยแยกตามประเภทหน่วยงาน - ${type}`, "ประเมิน (ครั้ง)", "ผู้รับประเมิน", "ร้อยละเฉลี่ย"]);
+                  arr.forEach(s => wsData.push([s.deptType, s.count, s.peopleCount, fmtPct(s.avg) + "%"]));
+               });
+            }
+            if (summaryStats.deptAveragesByType) {
+               Object.keys(summaryStats.deptAveragesByType).forEach(type => {
+                  const arr = summaryStats.deptAveragesByType[type];
+                  if (!arr || arr.length === 0) return;
+                  wsData.push([]);
+                  wsData.push([`คะแนนเฉลี่ยแยกตามหน่วยงาน - ${type}`, "ประเมิน (ครั้ง)", "ผู้รับประเมิน", "ร้อยละเฉลี่ย"]);
+                  arr.forEach(s => wsData.push([s.department, s.count, s.peopleCount, fmtPct(s.avg) + "%"]));
+               });
+            }
+            return wsData;
+         };
+
+         // พรีวิว PDF ตามแท็บย่อยที่เลือก: รายการบันทึก / สรุปภาพรวม (ประเมินตนเอง) / สรุปภาพรวม ICN
          const handleGenerateHistoryPDF = () => {
-            const wsData = getHistoryExcelData();
+            const isSummary = historyTab === 'summary' || historyTab === 'summaryICN';
+            if (isSummary && (!summaryStats || summaryStats.totalRecords === 0)) {
+               showPopup({ title: 'ไม่มีข้อมูล', message: 'ยังไม่มีข้อมูลสำหรับสรุปภาพรวมตามเงื่อนไขที่เลือก', type: 'info' });
+               return;
+            }
+            let wsData, reportTitle, subtitle, fnamePrefix, sigSource;
+            if (isSummary) {
+               wsData = getHistorySummaryData();
+               const scope = historyTab === 'summaryICN' ? 'การนิเทศโดย ICN' : 'การประเมินตนเอง';
+               reportTitle = "<span style='font-size: 15pt; line-height: 1.3;'>สรุปภาพรวมผลการประเมินมาตรฐาน IC</span>";
+               subtitle = `โรงพยาบาลศรีสังวรสุโขทัย — ${scope}`;
+               fnamePrefix = historyTab === 'summaryICN' ? 'สรุปภาพรวม_ICN' : 'สรุปภาพรวม_ประเมินตนเอง';
+               sigSource = summarySource;
+            } else {
+               wsData = getHistoryExcelData();
+               reportTitle = "ประวัติการบันทึกการประเมินมาตรฐาน IC";
+               subtitle = '';
+               fnamePrefix = 'ประวัติการประเมิน';
+               sigSource = filteredRecords;
+            }
             if (wsData.length === 0) return;
-            // ผู้ลงนามของเอกสารประวัติ: เฉพาะผู้ประเมินจริงในรายการที่ตรงตัวกรอง และมีชื่อในชีต "ลงนาม"
+            // ผู้ลงนาม: เฉพาะผู้ประเมินจริงในขอบเขตของแท็บนั้น และมีชื่อในชีต "ลงนาม"
             const historySigners = (signatures || []).filter(s => {
                 const nm = String(s.name).trim();
-                return filteredRecords.some(r => String(r.assessorName || '').trim() === nm);
+                return sigSource.some(r => String(r.assessorName || '').trim() === nm);
             });
-            const html = buildHTMLFromData(wsData, "ประวัติการบันทึกการประเมินมาตรฐาน IC", '', buildSignatureHtml(historySigners));
+            const html = buildHTMLFromData(wsData, reportTitle, subtitle, buildSignatureHtml(historySigners));
             setPdfPreviewState({
                 isOpen: true,
                 htmlContent: html,
-                filename: `ประวัติการประเมิน_${new Date().getTime()}.pdf`
+                filename: `${fnamePrefix}_${new Date().getTime()}.pdf`
             });
          };
 
