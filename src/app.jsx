@@ -270,8 +270,10 @@
     function App() {
       const [viewMode, setViewMode] = useState("department"); 
       const [hospitalRecords, setHospitalRecords] = useState(() => {
-        const saved = localStorage.getItem('ic_hospital_records');
-        if (saved) { try { return JSON.parse(saved); } catch(e) { return []; } }
+        try {
+          const saved = localStorage.getItem('ic_hospital_records');
+          if (saved) return JSON.parse(saved);
+        } catch (e) { /* localStorage อาจถูกปิด (คุกกี้ปิด/Private Mode) — เริ่มด้วยค่าว่างแทนจอขาว */ }
         return [];
       });
 
@@ -290,7 +292,8 @@
       const [blankFormPreview, setBlankFormPreview] = useState({ isOpen: false, type: '', html: '' });
       const blankFormIframeRef = useRef(null);
 
-      useEffect(() => { localStorage.setItem('ic_hospital_records', JSON.stringify(hospitalRecords)); }, [hospitalRecords]);
+      // ครอบ try/catch กัน Safari โหมดส่วนตัว (Private Mode) / โควตาเต็ม โยน QuotaExceededError แล้วทำแอปจอขาวบนมือถือ/ไอแพด
+      useEffect(() => { try { localStorage.setItem('ic_hospital_records', JSON.stringify(hospitalRecords)); } catch (e) { /* ข้ามการบันทึกลงเครื่องได้ ไม่กระทบการใช้งาน */ } }, [hospitalRecords]);
       
       const fetchChecklistsData = async (isManual = false) => {
           setIsSyncingChecklist(true);
@@ -3367,6 +3370,27 @@
       );
     }
 
+    // ตัวดักจับข้อผิดพลาดระดับแอป — กัน error ตอนเรนเดอร์/useEffect ทำให้ทั้งแอปกลายเป็นจอขาว (โดยเฉพาะบนมือถือ/ไอแพด)
+    class ErrorBoundary extends React.Component {
+      constructor(props) { super(props); this.state = { hasError: false, msg: '' }; }
+      static getDerivedStateFromError(err) { return { hasError: true, msg: (err && err.message) ? err.message : String(err) }; }
+      componentDidCatch(err, info) { try { console.error('App crashed:', err, info); } catch (e) {} }
+      render() {
+        if (this.state.hasError) {
+          return (
+            <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: "'Sarabun', sans-serif", textAlign: 'center', color: '#32355c', background: '#f8fafc' }}>
+              <div style={{ fontSize: '56px', marginBottom: '12px' }}>⚠️</div>
+              <h1 style={{ fontSize: '22px', fontWeight: 800, margin: '0 0 8px' }}>เกิดข้อผิดพลาดในการแสดงผล</h1>
+              <p style={{ fontSize: '16px', color: '#64748b', margin: '0 0 20px', maxWidth: '440px' }}>ระบบพบปัญหาชั่วคราว กรุณากดปุ่มด้านล่างเพื่อโหลดใหม่ หากยังพบปัญหา โปรดถ่ายภาพหน้าจอนี้แจ้งผู้ดูแลระบบ</p>
+              <button onClick={() => { try { location.reload(); } catch (e) {} }} style={{ background: '#16bba6', color: '#fff', border: 'none', borderRadius: '12px', padding: '12px 28px', fontSize: '16px', fontWeight: 700, cursor: 'pointer', marginBottom: '16px' }}>🔄 โหลดหน้าใหม่</button>
+              <pre style={{ fontSize: '12px', color: '#94a3b8', maxWidth: '90vw', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{this.state.msg}</pre>
+            </div>
+          );
+        }
+        return this.props.children;
+      }
+    }
+
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    root.render(<ErrorBoundary><App /></ErrorBoundary>);
   
