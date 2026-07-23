@@ -304,7 +304,7 @@
                   <div className="text-sm font-black mb-1" style={{ color: scoreHex(v) }}>{v.toFixed(1)}%</div>
                   <div style={{ height: Math.max((v / 100) * H, 2), width: '68%', maxWidth: 54, background: scoreHex(v), borderRadius: '8px 8px 0 0', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></div>
                   <div className="text-xs font-bold text-slate-600 mt-2 text-center leading-tight" style={{ maxWidth: 100 }}>{d.label}</div>
-                  {d.count != null ? <div className="text-[10px] text-slate-400 font-medium mt-0.5">{d.count} ครั้ง</div> : null}
+                  {d.count != null ? <div className="text-[10px] text-slate-400 font-medium mt-1 text-center leading-tight" style={{ maxWidth: 100 }}>{d.count} ครั้ง{d.people != null ? ` · ${d.people} คน/เหตุฯ` : ''}</div> : null}
                 </div>
               );
             })}
@@ -3189,25 +3189,8 @@
 
                             <div className="bg-white rounded-3xl shadow-sm border-2 border-gray-200 overflow-hidden mb-10">
                                 <div className="bg-slate-100 px-8 py-6 border-b-2 border-gray-200 font-black text-[#32355c] text-xl flex items-center gap-3 print:bg-gray-100 print:text-black"><Activity className="w-7 h-7 text-[#285c6c] print:hidden"/> คะแนนเฉลี่ยแยกตามประเภทแบบประเมิน</div>
-                                <div className="p-6 border-b border-gray-100">
-                                    <VBarChart data={summaryStats.typeAverages.map(s => ({ label: s.type, value: s.avg, count: s.count }))} /><ChartLegend />
-                                </div>
-                                <div className="p-0 overflow-x-auto">
-                                    <table className="w-full text-left border-collapse min-w-[600px]">
-                                        <thead>
-                                            <tr className="text-slate-600 text-base border-b-2 border-gray-200 bg-gray-50 print:bg-white print:text-black print:border-b-gray-300"><th className="py-5 px-8 font-bold">ประเภทแบบประเมิน</th><th className="py-5 px-8 font-bold text-center">ประเมิน (ครั้ง)</th><th className="py-5 px-8 font-bold text-center">ผู้รับประเมิน (คน/เหตุการณ์)</th><th className="py-5 px-8 font-bold">ค่าเฉลี่ย (ร้อยละ)</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {summaryStats.typeAverages.map(stat => {
-                                                const scoreColor = getScoreLevelColor(stat.avg);
-                                                return (
-                                                <tr key={stat.type} className={`border-b border-gray-100 last:border-0 print:border-gray-200 ${scoreColor.rowBg}`}>
-                                                    <td className="py-6 px-8 font-black text-[#32355c] text-xl">{stat.type}</td><td className="py-6 px-8 text-center font-bold text-slate-600 text-lg">{stat.count}</td><td className="py-6 px-8 text-center font-bold text-[#238885] text-lg">{stat.peopleCount}</td>
-                                                    <td className="py-6 px-8"><span className={`font-black text-2xl ${scoreColor.text}`}>{stat.avg}%</span></td>
-                                                </tr>
-                                            )})}
-                                        </tbody>
-                                    </table>
+                                <div className="p-6">
+                                    <VBarChart data={summaryStats.typeAverages.map(s => ({ label: s.type, value: s.avg, count: s.count, people: s.peopleCount }))} /><ChartLegend />
                                 </div>
                             </div>
 
@@ -3236,25 +3219,8 @@
                             {summaryStats.deptTypeAveragesByType && Object.keys(summaryStats.deptTypeAveragesByType).map(type => (
                             <div key={`deptType-${type}`} className="bg-white rounded-3xl shadow-sm border-2 border-gray-200 overflow-hidden mt-10 print:border-gray-400">
                                 <div className="bg-slate-100 px-8 py-6 border-b-2 border-gray-200 font-black text-[#32355c] text-xl flex items-center gap-3 print:bg-gray-100 print:text-black"><Building2 className="w-7 h-7 text-[#285c6c] print:hidden"/> คะแนนเฉลี่ยแยกตามประเภทหน่วยงาน - {type}</div>
-                                <div className="p-6 border-b border-gray-100">
-                                    <VBarChart data={summaryStats.deptTypeAveragesByType[type].map(s => ({ label: s.deptType, value: s.avg, count: s.count }))} />
-                                </div>
-                                <div className="p-0 overflow-x-auto">
-                                    <table className="w-full text-left border-collapse min-w-[600px]">
-                                        <thead>
-                                            <tr className="text-slate-600 text-base border-b-2 border-gray-200 bg-gray-50 print:bg-white print:text-black print:border-b-gray-300"><th className="py-4 px-8 font-bold">ประเภทหน่วยงาน</th><th className="py-4 px-8 font-bold text-center">ประเมิน (ครั้ง)</th><th className="py-4 px-8 font-bold text-center">ผู้รับประเมิน (คน/เหตุการณ์)</th><th className="py-4 px-8 font-bold">ค่าเฉลี่ย (ร้อยละ)</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {summaryStats.deptTypeAveragesByType[type].map(stat => {
-                                                const scoreColor = getScoreLevelColor(stat.avg);
-                                                return (
-                                                <tr key={stat.deptType} className={`border-b border-gray-100 last:border-0 print:border-gray-200 ${scoreColor.rowBg}`}>
-                                                    <td className="py-6 px-8 font-black text-slate-800 text-xl">{stat.deptType}</td><td className="py-6 px-8 text-center font-bold text-slate-600 text-lg">{stat.count}</td><td className="py-6 px-8 text-center font-bold text-[#238885] text-lg">{stat.peopleCount}</td>
-                                                    <td className="py-6 px-8"><span className={`font-black text-2xl ${scoreColor.text}`}>{stat.avg}%</span></td>
-                                                </tr>
-                                            )})}
-                                        </tbody>
-                                    </table>
+                                <div className="p-6">
+                                    <VBarChart data={summaryStats.deptTypeAveragesByType[type].map(s => ({ label: s.deptType, value: s.avg, count: s.count, people: s.peopleCount }))} /><ChartLegend />
                                 </div>
                             </div>
                             ))}
@@ -3262,25 +3228,8 @@
                             {summaryStats.deptAveragesByType && Object.keys(summaryStats.deptAveragesByType).map(type => (
                             <div key={type} className="bg-white rounded-3xl shadow-sm border-2 border-gray-200 overflow-hidden mt-10 print:border-gray-400">
                                 <div className="bg-slate-100 px-8 py-6 border-b-2 border-gray-200 font-black text-[#32355c] text-xl flex items-center gap-3 print:bg-gray-100 print:text-black"><Building2 className="w-7 h-7 text-[#285c6c] print:hidden"/> คะแนนเฉลี่ยแยกตามหน่วยงาน - {type}</div>
-                                <div className="p-6 border-b border-gray-100">
-                                    <VBarChart data={summaryStats.deptAveragesByType[type].map(s => ({ label: s.department, value: s.avg, count: s.count }))} />
-                                </div>
-                                <div className="p-0 overflow-x-auto">
-                                    <table className="w-full text-left border-collapse min-w-[600px]">
-                                        <thead>
-                                            <tr className="text-slate-600 text-base border-b-2 border-gray-200 bg-gray-50 print:bg-white print:text-black print:border-b-gray-300"><th className="py-4 px-8 font-bold">ประเภท</th><th className="py-4 px-8 font-bold">หน่วยงาน</th><th className="py-4 px-8 font-bold text-center">ประเมิน (ครั้ง)</th><th className="py-4 px-8 font-bold text-center">ผู้รับประเมิน (คน/เหตุการณ์)</th><th className="py-4 px-8 font-bold">ค่าเฉลี่ย (ร้อยละ)</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {summaryStats.deptAveragesByType[type].map(stat => {
-                                                const scoreColor = getScoreLevelColor(stat.avg);
-                                                return (
-                                                <tr key={`${stat.deptType}_${stat.department}`} className={`border-b-2 border-gray-50 last:border-0 print:border-gray-200 ${scoreColor.rowBg}`}>
-                                                    <td className="py-6 px-8 font-bold text-slate-500 text-base">{stat.deptType}</td><td className="py-6 px-8 font-black text-slate-800 text-xl">{stat.department}</td><td className="py-6 px-8 text-center font-bold text-slate-600 text-lg">{stat.count}</td><td className="py-6 px-8 text-center font-bold text-[#238885] text-lg">{stat.peopleCount}</td>
-                                                    <td className="py-6 px-8"><span className={`font-black text-2xl ${scoreColor.text}`}>{stat.avg}%</span></td>
-                                                </tr>
-                                            )})}
-                                        </tbody>
-                                    </table>
+                                <div className="p-6">
+                                    <VBarChart data={summaryStats.deptAveragesByType[type].map(s => ({ label: s.department, value: s.avg, count: s.count, people: s.peopleCount }))} /><ChartLegend />
                                 </div>
                             </div>
                             ))}
