@@ -3185,11 +3185,6 @@
                                <ChartCard title="แนวโน้มร้อยละเฉลี่ยรายเดือน" subtitle="พัฒนาการการปฏิบัติตามช่วงเวลา">
                                   <LineChart data={chartData.byMonth} />
                                </ChartCard>
-                               <div className="mt-6">
-                                  <ChartCard title="ร้อยละเฉลี่ยการปฏิบัติ แยกตามหน่วยงาน" subtitle="ทุกหน่วยงานที่ประเมิน — เรียงจากมากไปน้อย">
-                                     <HBarChart data={chartData.byDept} /><ChartLegend />
-                                  </ChartCard>
-                               </div>
                             </div>
 
                             <div className="bg-white rounded-3xl shadow-sm border-2 border-gray-200 overflow-hidden mb-10">
