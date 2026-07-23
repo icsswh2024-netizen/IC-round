@@ -1,0 +1,12 @@
+# index.html ถูก build ล่วงหน้า (node build.js) และ commit ไว้ในรีโปแล้ว
+# จึงไม่ต้องให้ Netlify build ซ้ำ — แค่เผยแพร่ไฟล์ที่ commit ไว้ตรง ๆ
+# กันปัญหา deploy ล้มเหลวเพราะขั้นตอน build บน Netlify (ทำให้เว็บค้างเวอร์ชันเก่า)
+[build]
+  publish = "."
+  command = "echo 'ไม่ต้อง build — index.html ถูกสร้างล่วงหน้าและ commit ไว้แล้ว'"
+
+# กันแคช: บังคับเบราว์เซอร์ตรวจเวอร์ชันใหม่ทุกครั้ง (เสริมกับไฟล์ _headers)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
