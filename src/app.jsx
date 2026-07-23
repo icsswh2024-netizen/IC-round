@@ -273,6 +273,10 @@
     const scoreHex = (p) => { const v = parseFloat(p); if (isNaN(v)) return '#cbd5e1'; if (v >= 80) return '#8ab278'; if (v >= 60) return '#e9c460'; return '#f1a164'; };
     // จัดรูปแบบร้อยละ: ทศนิยม 2 ตำแหน่ง แต่ถ้าเป็นจำนวนเต็ม (เช่น 100, 80, 50) ไม่ใส่ทศนิยม
     const fmtPct = (p) => { const v = parseFloat(p); if (isNaN(v)) return '0'; return Number.isInteger(v) ? String(v) : v.toFixed(2); };
+    // ไล่เฉดสีตามเกณฑ์ 2 สีโทนเดียวกัน (ฐานเข้ม → อ่อนด้านบน)
+    const scoreGrad = (p) => { const v = parseFloat(p); if (isNaN(v)) return 'linear-gradient(to top,#cbd5e1,#e2e8f0)'; if (v >= 80) return 'linear-gradient(to top,#5a7d4a,#a7c98f)'; if (v >= 60) return 'linear-gradient(to top,#c9a74a,#f2dd93)'; return 'linear-gradient(to top,#d97e45,#f6b78a)'; };
+    // สีข้อความ (เฉดเข้ม) ให้อ่านชัดคู่กับกราฟไล่เฉด
+    const scoreDark = (p) => { const v = parseFloat(p); if (isNaN(v)) return '#64748b'; if (v >= 80) return '#4d6b40'; if (v >= 60) return '#9c750e'; return '#bd570d'; };
 
     const ChartCard = ({ title, subtitle, children }) => (
       <div className="bg-white rounded-3xl border-2 border-gray-200 shadow-sm p-6 print:border-gray-300 print:shadow-none break-inside-avoid">
@@ -286,9 +290,9 @@
 
     const ChartLegend = () => (
       <div className="flex flex-wrap gap-4 mt-5 pt-4 border-t border-gray-100 text-xs font-bold">
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#8ab278', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></span> ดี (≥80%)</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#e9c460', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></span> พอใช้ (60–79%)</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#f1a164', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></span> ควรปรับปรุง (&lt;60%)</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm inline-block" style={{ background: 'linear-gradient(to top,#5a7d4a,#a7c98f)', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></span> ดี (≥80%)</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm inline-block" style={{ background: 'linear-gradient(to top,#c9a74a,#f2dd93)', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></span> พอใช้ (60–79%)</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm inline-block" style={{ background: 'linear-gradient(to top,#d97e45,#f6b78a)', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></span> ควรปรับปรุง (&lt;60%)</span>
       </div>
     );
 
@@ -320,8 +324,8 @@
                     const v = parseFloat(d.value) || 0;
                     return (
                       <div key={i} className="flex flex-col items-center justify-end flex-1" style={{ minWidth: colMinW, height: H }}>
-                        <div className="text-xs sm:text-sm font-black mb-0.5 whitespace-nowrap" style={{ color: scoreHex(v) }}>{fmtPct(v)}%</div>
-                        <div style={{ height: Math.max((v / 100) * H, 2), width: '64%', maxWidth: 50, background: scoreHex(v), borderRadius: '6px 6px 0 0', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></div>
+                        <div className="text-xs sm:text-sm font-black mb-0.5 whitespace-nowrap" style={{ color: scoreDark(v) }}>{fmtPct(v)}%</div>
+                        <div style={{ height: Math.max((v / 100) * H, 2), width: '64%', maxWidth: 50, background: scoreGrad(v), borderRadius: '6px 6px 0 0', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></div>
                       </div>
                     );
                   })}
