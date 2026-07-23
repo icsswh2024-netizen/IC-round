@@ -2774,6 +2774,7 @@
       const HistoryView = () => {
          const [loginUser, setLoginUser] = useState("");         const [loginPass, setLoginPass] = useState("");
          const [loginErr, setLoginErr] = useState("");
+         const [historyTab, setHistoryTab] = useState('records'); // เมนูย่อยหน้าประวัติ: 'records' | 'summary'
 
          const [filterYear, setFilterYear] = useState("all");
          const [filterStartMonth, setFilterStartMonth] = useState("all");
@@ -3093,8 +3094,15 @@
                        </div>
                     </div>
 
+                    {/* เมนูย่อยในหน้าประวัติ: รายการบันทึก / สรุปภาพรวม + กราฟ (คลิกเข้าไปดู เพื่อไม่ให้หน้ายาว) */}
+                    <div className="flex flex-wrap gap-2 mb-6 print:hidden">
+                       <button onClick={() => setHistoryTab('records')} className={`px-6 py-3 rounded-xl font-bold text-base flex items-center gap-2 transition-all ${historyTab === 'records' ? 'bg-[#285c6c] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><Clock className="w-5 h-5" /> รายการบันทึก <span className={`text-xs px-2 py-0.5 rounded-full ${historyTab === 'records' ? 'bg-white/20' : 'bg-slate-200'}`}>{filteredRecords.length}</span></button>
+                       <button onClick={() => setHistoryTab('summary')} className={`px-6 py-3 rounded-xl font-bold text-base flex items-center gap-2 transition-all ${historyTab === 'summary' ? 'bg-[#285c6c] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><PieChart className="w-5 h-5" /> สรุปภาพรวม + กราฟ</button>
+                    </div>
+
                     <div className="hidden print:block mb-6 text-base text-gray-600 font-bold">ข้อมูลอัปเดต ณ วันที่ {new Date().toLocaleString('th-TH')} น.</div>
 
+                    {historyTab === 'records' && (
                     <div className="overflow-x-auto rounded-xl border border-gray-200">
                        <table className="w-full text-left border-collapse min-w-[800px]">
                           <thead>
@@ -3124,9 +3132,14 @@
                           </tbody>
                        </table>
                     </div>
+                    )}
 
-                    {summaryStats && summaryStats.totalRecords > 0 && (
-                        <div className="mt-12 border-t-2 border-gray-200 pt-10 pdf-no-break break-inside-avoid">
+                    {historyTab === 'summary' && (!summaryStats || summaryStats.totalRecords === 0) && (
+                       <div className="text-center py-16 text-slate-400 font-medium text-lg">ยังไม่มีข้อมูลสำหรับสรุปภาพรวม (ปรับตัวกรอง หรือดึงข้อมูลจาก Cloud)</div>
+                    )}
+
+                    {historyTab === 'summary' && summaryStats && summaryStats.totalRecords > 0 && (
+                        <div className="mt-2 pdf-no-break break-inside-avoid">
                             <div className="bg-[#314566] text-white px-8 py-5 rounded-3xl shadow-md mb-8 flex items-center gap-4 print:bg-transparent print:text-black print:border-none print:px-0 print:py-0 print:shadow-none">
                                 <PieChart className="w-9 h-9 text-[#16bba6] print:hidden"/> <h3 className="text-2xl font-black m-0">สรุปภาพรวมโรงพยาบาล (อ้างอิงจากข้อมูลที่กรอง)</h3>
                             </div>
