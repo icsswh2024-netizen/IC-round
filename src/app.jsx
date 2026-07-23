@@ -3194,6 +3194,9 @@
 
                             <div className="bg-white rounded-3xl shadow-sm border-2 border-gray-200 overflow-hidden mb-10">
                                 <div className="bg-slate-100 px-8 py-6 border-b-2 border-gray-200 font-black text-[#32355c] text-xl flex items-center gap-3 print:bg-gray-100 print:text-black"><Activity className="w-7 h-7 text-[#285c6c] print:hidden"/> คะแนนเฉลี่ยแยกตามประเภทแบบประเมิน</div>
+                                <div className="p-6 border-b border-gray-100">
+                                    <VBarChart data={summaryStats.typeAverages.map(s => ({ label: s.type, value: s.avg, count: s.count }))} /><ChartLegend />
+                                </div>
                                 <div className="p-0 overflow-x-auto">
                                     <table className="w-full text-left border-collapse min-w-[600px]">
                                         <thead>
@@ -3238,6 +3241,9 @@
                             {summaryStats.deptTypeAveragesByType && Object.keys(summaryStats.deptTypeAveragesByType).map(type => (
                             <div key={`deptType-${type}`} className="bg-white rounded-3xl shadow-sm border-2 border-gray-200 overflow-hidden mt-10 print:border-gray-400">
                                 <div className="bg-slate-100 px-8 py-6 border-b-2 border-gray-200 font-black text-[#32355c] text-xl flex items-center gap-3 print:bg-gray-100 print:text-black"><Building2 className="w-7 h-7 text-[#285c6c] print:hidden"/> คะแนนเฉลี่ยแยกตามประเภทหน่วยงาน - {type}</div>
+                                <div className="p-6 border-b border-gray-100">
+                                    <VBarChart data={summaryStats.deptTypeAveragesByType[type].map(s => ({ label: s.deptType, value: s.avg, count: s.count }))} />
+                                </div>
                                 <div className="p-0 overflow-x-auto">
                                     <table className="w-full text-left border-collapse min-w-[600px]">
                                         <thead>
@@ -3261,6 +3267,9 @@
                             {summaryStats.deptAveragesByType && Object.keys(summaryStats.deptAveragesByType).map(type => (
                             <div key={type} className="bg-white rounded-3xl shadow-sm border-2 border-gray-200 overflow-hidden mt-10 print:border-gray-400">
                                 <div className="bg-slate-100 px-8 py-6 border-b-2 border-gray-200 font-black text-[#32355c] text-xl flex items-center gap-3 print:bg-gray-100 print:text-black"><Building2 className="w-7 h-7 text-[#285c6c] print:hidden"/> คะแนนเฉลี่ยแยกตามหน่วยงาน - {type}</div>
+                                <div className="p-6 border-b border-gray-100">
+                                    <VBarChart data={summaryStats.deptAveragesByType[type].map(s => ({ label: s.department, value: s.avg, count: s.count }))} />
+                                </div>
                                 <div className="p-0 overflow-x-auto">
                                     <table className="w-full text-left border-collapse min-w-[600px]">
                                         <thead>
