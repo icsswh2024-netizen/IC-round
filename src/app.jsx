@@ -267,6 +267,102 @@
       );
     };
 
+    // ===================================================================
+    // กราฟภาพรวม (วาดด้วย SVG/CSS ล้วน ไม่พึ่งไลบรารีภายนอก/CDN — ทำงานออฟไลน์ + พิมพ์ได้)
+    // ===================================================================
+    const scoreHex = (p) => { const v = parseFloat(p); if (isNaN(v)) return '#cbd5e1'; if (v >= 80) return '#8ab278'; if (v >= 60) return '#e9c460'; return '#f1a164'; };
+
+    const ChartCard = ({ title, subtitle, children }) => (
+      <div className="bg-white rounded-3xl border-2 border-gray-200 shadow-sm p-6 print:border-gray-300 print:shadow-none break-inside-avoid">
+        <div className="mb-5">
+          <h4 className="text-lg font-black text-[#32355c] leading-tight">{title}</h4>
+          {subtitle ? <p className="text-sm text-slate-400 font-medium mt-1">{subtitle}</p> : null}
+        </div>
+        {children}
+      </div>
+    );
+
+    const ChartLegend = () => (
+      <div className="flex flex-wrap gap-4 mt-5 pt-4 border-t border-gray-100 text-xs font-bold">
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#8ab278', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></span> ดี (≥80%)</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#e9c460', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></span> พอใช้ (60–79%)</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#f1a164', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></span> ควรปรับปรุง (&lt;60%)</span>
+      </div>
+    );
+
+    // แท่งแนวตั้ง (ค่า 0–100%)
+    const VBarChart = ({ data }) => {
+      if (!data || data.length === 0) return <div className="text-slate-400 text-center py-10 font-medium">ยังไม่มีข้อมูล</div>;
+      const H = 190;
+      return (
+        <div className="w-full overflow-x-auto">
+          <div className="flex items-end justify-around gap-3" style={{ minWidth: Math.max(data.length * 82, 220) }}>
+            {data.map((d, i) => {
+              const v = parseFloat(d.value) || 0;
+              return (
+                <div key={i} className="flex flex-col items-center justify-end flex-1" style={{ minWidth: 62 }}>
+                  <div className="text-sm font-black mb-1" style={{ color: scoreHex(v) }}>{v.toFixed(1)}%</div>
+                  <div style={{ height: Math.max((v / 100) * H, 2), width: '68%', maxWidth: 54, background: scoreHex(v), borderRadius: '8px 8px 0 0', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></div>
+                  <div className="text-xs font-bold text-slate-600 mt-2 text-center leading-tight" style={{ maxWidth: 100 }}>{d.label}</div>
+                  {d.count != null ? <div className="text-[10px] text-slate-400 font-medium mt-0.5">{d.count} ครั้ง</div> : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    };
+
+    // แท่งแนวนอน (ชื่อยาวอ่านง่าย)
+    const HBarChart = ({ data }) => {
+      if (!data || data.length === 0) return <div className="text-slate-400 text-center py-10 font-medium">ยังไม่มีข้อมูล</div>;
+      return (
+        <div className="flex flex-col gap-3">
+          {data.map((d, i) => {
+            const v = parseFloat(d.value) || 0;
+            return (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-32 sm:w-48 shrink-0 text-sm font-bold text-slate-700 text-right truncate" title={d.label}>{d.label}</div>
+                <div className="flex-1 bg-slate-100 rounded-full h-6 overflow-hidden">
+                  <div style={{ width: `${Math.max(v, 1.5)}%`, background: scoreHex(v), height: '100%', borderRadius: '9999px', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></div>
+                </div>
+                <div className="w-20 shrink-0 text-sm font-black text-right" style={{ color: scoreHex(v) }}>{v.toFixed(1)}%{d.count != null ? <span className="text-[10px] text-slate-400 font-medium block leading-none">{d.count} ครั้ง</span> : null}</div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    };
+
+    // เส้น (แนวโน้มตามเวลา) — SVG
+    const LineChart = ({ data }) => {
+      if (!data || data.length === 0) return <div className="text-slate-400 text-center py-10 font-medium">ยังไม่มีข้อมูล</div>;
+      const W = Math.max(data.length * 92, 340), H = 230, padX = 44, padY = 30, plotW = W - padX * 2, plotH = H - padY * 2;
+      const x = (i) => data.length === 1 ? padX + plotW / 2 : padX + (i / (data.length - 1)) * plotW;
+      const y = (v) => padY + plotH - (Math.min(Math.max(v, 0), 100) / 100) * plotH;
+      const pts = data.map((d, i) => `${x(i)},${y(parseFloat(d.value) || 0)}`).join(' ');
+      return (
+        <div className="w-full overflow-x-auto">
+          <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', minWidth: Math.min(W, 620), height: 'auto' }} preserveAspectRatio="xMidYMid meet">
+            {[0, 25, 50, 75, 100].map(g => { const gy = y(g); return (
+              <g key={g}>
+                <line x1={padX} y1={gy} x2={W - padX} y2={gy} stroke="#e5e7eb" strokeWidth="1" />
+                <text x={padX - 8} y={gy + 4} textAnchor="end" fontSize="11" fill="#94a3b8">{g}</text>
+              </g>
+            ); })}
+            <polyline points={pts} fill="none" stroke="#238885" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+            {data.map((d, i) => { const v = parseFloat(d.value) || 0; return (
+              <g key={i}>
+                <circle cx={x(i)} cy={y(v)} r="4.5" fill={scoreHex(v)} stroke="#fff" strokeWidth="1.5" />
+                <text x={x(i)} y={y(v) - 11} textAnchor="middle" fontSize="11" fontWeight="700" fill="#238885">{v.toFixed(0)}%</text>
+                <text x={x(i)} y={H - 8} textAnchor="middle" fontSize="11" fill="#64748b">{d.label}</text>
+              </g>
+            ); })}
+          </svg>
+        </div>
+      );
+    };
+
     function App() {
       const [viewMode, setViewMode] = useState("department"); 
       const [hospitalRecords, setHospitalRecords] = useState(() => {
@@ -2847,6 +2943,41 @@
             return { overallAvg, typeAverages, deptTypeAveragesByType, deptAveragesByType, bundleAveragesByType, totalRecords: validRecordsCount, totalPeople: totalPeopleCount };
          }, [filteredRecords, dynamicChecklists]);
 
+         // --- ข้อมูลสำหรับกราฟภาพรวม: รวมทุกแบบประเมิน จำแนกตามประเภทหน่วยงาน/หน่วยงาน/แบบประเมิน/รายเดือน ---
+         const chartData = useMemo(() => {
+            const recEF = (r) => {
+               let e = 0, f = 0;
+               if (r.overallSummaryData && r.overallSummaryData.aggSectionScores) {
+                  r.overallSummaryData.aggSectionScores.forEach(sec => (sec.items || []).forEach(it => { e += (it.done || 0); f += ((it.done || 0) + (it.notDone || 0)); }));
+               }
+               if (f === 0 && parseFloat(r.overallSummaryData?.grandSummary?.percentage || 0) > 0) { f = 100; e = parseFloat(r.overallSummaryData.grandSummary.percentage); }
+               return { e, f };
+            };
+            const byDeptTypeMap = {}, byDeptMap = {}, byTypeMap = {}, byMonthMap = {};
+            const thM = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            const add = (m, k) => { if (!m[k]) m[k] = { e: 0, f: 0, count: 0 }; return m[k]; };
+            filteredRecords.forEach(r => {
+               const { e, f } = recEF(r);
+               if (f <= 0) return;
+               const o1 = add(byDeptTypeMap, r.deptType || 'ไม่ระบุ'); o1.e += e; o1.f += f; o1.count++;
+               const o2 = add(byDeptMap, r.department || 'ไม่ระบุ'); o2.e += e; o2.f += f; o2.count++;
+               if (r.assessmentType && r.assessmentType !== '-') { const o3 = add(byTypeMap, r.assessmentType); o3.e += e; o3.f += f; o3.count++; }
+               const d = new Date(r.id);
+               if (!isNaN(d.getTime())) {
+                  const ym = d.getFullYear() * 12 + d.getMonth();
+                  if (!byMonthMap[ym]) byMonthMap[ym] = { e: 0, f: 0, count: 0, label: `${thM[d.getMonth()]} ${(d.getFullYear() + 543).toString().slice(-2)}` };
+                  byMonthMap[ym].e += e; byMonthMap[ym].f += f; byMonthMap[ym].count++;
+               }
+            });
+            const toArr = (m) => Object.keys(m).map(k => ({ label: k, value: m[k].f > 0 ? ((m[k].e / m[k].f) * 100).toFixed(1) : 0, count: m[k].count }));
+            return {
+               byDeptType: toArr(byDeptTypeMap).sort((a, b) => a.label.localeCompare(b.label, 'th')),
+               byDept: toArr(byDeptMap).sort((a, b) => parseFloat(b.value) - parseFloat(a.value)),
+               byType: toArr(byTypeMap).sort((a, b) => parseFloat(b.value) - parseFloat(a.value)),
+               byMonth: Object.keys(byMonthMap).map(Number).sort((a, b) => a - b).map(ym => ({ label: byMonthMap[ym].label, value: byMonthMap[ym].f > 0 ? ((byMonthMap[ym].e / byMonthMap[ym].f) * 100).toFixed(1) : 0, count: byMonthMap[ym].count }))
+            };
+         }, [filteredRecords]);
+
          const getHistoryExcelData = () => {
              const wsData = [];
              wsData.push(["ประวัติการบันทึกการประเมินมาตรฐาน IC", "โรงพยาบาลศรีสังวรสุโขทัย"]);
@@ -3013,6 +3144,30 @@
                                     <div className="flex items-baseline gap-2"><span className="text-6xl font-black text-[#238885] print:text-black">{summaryStats.overallAvg}%</span></div>
                                     <div className="w-full bg-white rounded-full h-3 mt-5 max-w-[180px] print:hidden"><div className="bg-[#238885] h-3 rounded-full" style={{width: `${summaryStats.overallAvg}%`}}></div></div>
                                 </div>
+                            </div>
+
+                            {/* กราฟภาพรวม (SVG/CSS ล้วน — ขยับตามตัวกรอง + พิมพ์ได้) */}
+                            <div className="mb-10">
+                               <div className="flex items-center gap-3 mb-6 text-[#32355c]">
+                                  <Activity className="w-7 h-7 text-[#285c6c] print:hidden" />
+                                  <h3 className="text-xl font-black m-0">กราฟภาพรวมการนิเทศ</h3>
+                               </div>
+                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                                  <ChartCard title="ร้อยละเฉลี่ยการปฏิบัติ แยกตามประเภทหน่วยงาน" subtitle="IPD / OPD / กลุ่มงานให้บริการผู้ป่วย">
+                                     <VBarChart data={chartData.byDeptType} /><ChartLegend />
+                                  </ChartCard>
+                                  <ChartCard title="ร้อยละเฉลี่ยการปฏิบัติ แยกตามแบบประเมิน" subtitle="เรียงจากมากไปน้อย">
+                                     <VBarChart data={chartData.byType} /><ChartLegend />
+                                  </ChartCard>
+                               </div>
+                               <ChartCard title="แนวโน้มร้อยละเฉลี่ยรายเดือน" subtitle="พัฒนาการการปฏิบัติตามช่วงเวลา">
+                                  <LineChart data={chartData.byMonth} />
+                               </ChartCard>
+                               <div className="mt-6">
+                                  <ChartCard title="ร้อยละเฉลี่ยการปฏิบัติ แยกตามหน่วยงาน" subtitle="ทุกหน่วยงานที่ประเมิน — เรียงจากมากไปน้อย">
+                                     <HBarChart data={chartData.byDept} /><ChartLegend />
+                                  </ChartCard>
+                               </div>
                             </div>
 
                             <div className="bg-white rounded-3xl shadow-sm border-2 border-gray-200 overflow-hidden mb-10">
