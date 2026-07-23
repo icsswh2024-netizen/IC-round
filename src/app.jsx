@@ -79,7 +79,7 @@
           <span className="text-xs font-bold mt-2 bg-black/20 px-3 py-1 rounded-full w-full max-w-[95%] truncate text-center text-white border border-white/10 print:bg-gray-50 print:text-slate-500 print:border-gray-200" title={config.items.join(', ')}>ข้อ: {config.items.join(', ')}</span>
         </div>
         <div className="w-full bg-black/10 rounded-xl p-3 border border-white/10 flex flex-col items-center shadow-inner print:bg-gray-50 print:border-gray-100">
-          <span className="block text-4xl font-black text-white leading-none print:text-[#238885]">{data?.percent || 0}%</span>
+          <span className="block text-4xl font-black text-white leading-none print:text-[#238885]">{fmtPct(data?.percent || 0)}%</span>
           <span className="block text-xs font-bold text-white/80 mt-2 print:text-slate-500">ผ่าน: {data?.earned || 0}/{data?.total || 0}</span>
           <div className="w-full bg-black/20 rounded-lg px-2 py-1.5 border border-white/20 mt-3 print:bg-[#f1a164]/10 print:border-[#f1a164]/30">
              <span className="block text-xs font-bold text-white text-center print:text-[#c2651b]">ส่วนที่เหลือ: {100 - (parseInt(data?.percent) || 0)}%</span>
@@ -271,6 +271,8 @@
     // กราฟภาพรวม (วาดด้วย SVG/CSS ล้วน ไม่พึ่งไลบรารีภายนอก/CDN — ทำงานออฟไลน์ + พิมพ์ได้)
     // ===================================================================
     const scoreHex = (p) => { const v = parseFloat(p); if (isNaN(v)) return '#cbd5e1'; if (v >= 80) return '#8ab278'; if (v >= 60) return '#e9c460'; return '#f1a164'; };
+    // จัดรูปแบบร้อยละ: ทศนิยม 2 ตำแหน่ง แต่ถ้าเป็นจำนวนเต็ม (เช่น 100, 80, 50) ไม่ใส่ทศนิยม
+    const fmtPct = (p) => { const v = parseFloat(p); if (isNaN(v)) return '0'; return Number.isInteger(v) ? String(v) : v.toFixed(2); };
 
     const ChartCard = ({ title, subtitle, children }) => (
       <div className="bg-white rounded-3xl border-2 border-gray-200 shadow-sm p-6 print:border-gray-300 print:shadow-none break-inside-avoid">
@@ -318,7 +320,7 @@
                     const v = parseFloat(d.value) || 0;
                     return (
                       <div key={i} className="flex flex-col items-center justify-end flex-1" style={{ minWidth: colMinW, height: H }}>
-                        <div className="text-xs sm:text-sm font-black mb-0.5 whitespace-nowrap" style={{ color: scoreHex(v) }}>{v.toFixed(1)}%</div>
+                        <div className="text-xs sm:text-sm font-black mb-0.5 whitespace-nowrap" style={{ color: scoreHex(v) }}>{fmtPct(v)}%</div>
                         <div style={{ height: Math.max((v / 100) * H, 2), width: '64%', maxWidth: 50, background: scoreHex(v), borderRadius: '6px 6px 0 0', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></div>
                       </div>
                     );
@@ -353,7 +355,7 @@
                 <div className="flex-1 bg-slate-100 rounded-full h-6 overflow-hidden">
                   <div style={{ width: `${Math.max(v, 1.5)}%`, background: scoreHex(v), height: '100%', borderRadius: '9999px', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></div>
                 </div>
-                <div className="w-20 shrink-0 text-sm font-black text-right" style={{ color: scoreHex(v) }}>{v.toFixed(1)}%{d.count != null ? <span className="text-[10px] text-slate-400 font-medium block leading-none">{d.count} ครั้ง</span> : null}</div>
+                <div className="w-20 shrink-0 text-sm font-black text-right" style={{ color: scoreHex(v) }}>{fmtPct(v)}%{d.count != null ? <span className="text-[10px] text-slate-400 font-medium block leading-none">{d.count} ครั้ง</span> : null}</div>
               </div>
             );
           })}
@@ -381,7 +383,7 @@
             {data.map((d, i) => { const v = parseFloat(d.value) || 0; return (
               <g key={i}>
                 <circle cx={x(i)} cy={y(v)} r="4.5" fill={scoreHex(v)} stroke="#fff" strokeWidth="1.5" />
-                <text x={x(i)} y={y(v) - 11} textAnchor="middle" fontSize="11" fontWeight="700" fill="#238885">{v.toFixed(0)}%</text>
+                <text x={x(i)} y={y(v) - 11} textAnchor="middle" fontSize="11" fontWeight="700" fill="#238885">{fmtPct(v)}%</text>
                 <text x={x(i)} y={H - 8} textAnchor="middle" fontSize="11" fill="#64748b">{d.label}</text>
               </g>
             ); })}
@@ -1341,7 +1343,7 @@
               const ans = pAnswers[itemId];
               if (ans === 'DONE') { earned++; total++; } else if (ans === 'NOT_DONE') { total++; }
             });
-            bundleScores[key] = { earned, total, percent: total > 0 ? ((earned/total)*100).toFixed(0) : 0 };
+            bundleScores[key] = { earned, total, percent: total > 0 ? ((earned/total)*100).toFixed(2) : 0 };
           });
 
           const uniqueBundleItems = new Set();
@@ -1351,7 +1353,7 @@
              const ans = pAnswers[itemId];
              if (ans === 'DONE') { overallEarned++; overallTotal++; } else if (ans === 'NOT_DONE') { overallTotal++; }
           });
-          bundleScores.OVERALL = { earned: overallEarned, total: overallTotal, percent: overallTotal > 0 ? ((overallEarned/overallTotal)*100).toFixed(0) : 0 };
+          bundleScores.OVERALL = { earned: overallEarned, total: overallTotal, percent: overallTotal > 0 ? ((overallEarned/overallTotal)*100).toFixed(2) : 0 };
           scoresArray.push({ sectionScores, totalSummary, bundleScores });
         }
         return { scoresArray, mappingToUse, keysToUse };
@@ -1369,7 +1371,7 @@
                 else if (ans === 'NA') { itemTotal--; itemNA++; } 
               }
               secEarned += itemEarned; secTotal += itemTotal;
-              return { id: item.id, text: item.text, earned: itemEarned, total: itemTotal, percent: itemTotal > 0 ? ((itemEarned/itemTotal)*100).toFixed(0) : 0, done: itemDone, notDone: itemNotDone, na: itemNA };
+              return { id: item.id, text: item.text, earned: itemEarned, total: itemTotal, percent: itemTotal > 0 ? ((itemEarned/itemTotal)*100).toFixed(2) : 0, done: itemDone, notDone: itemNotDone, na: itemNA };
           });
           return { id: section.id, title: section.title, fullScore: secTotal, earnedScore: secEarned, percentage: secTotal > 0 ? ((secEarned/secTotal)*100).toFixed(2) : 0, items: itemsAgg };
         });
@@ -1401,7 +1403,7 @@
                 if (ans === 'DONE') { bEarned++; bTotal++; } else if (ans === 'NOT_DONE') { bTotal++; }
               }
           });
-          aggBundleScores[key] = { earned: bEarned, total: bTotal, percent: bTotal > 0 ? ((bEarned/bTotal)*100).toFixed(0) : 0 };
+          aggBundleScores[key] = { earned: bEarned, total: bTotal, percent: bTotal > 0 ? ((bEarned/bTotal)*100).toFixed(2) : 0 };
         });
 
         const uniqueBundleItems = new Set();
@@ -1413,7 +1415,7 @@
               if (ans === 'DONE') { obEarned++; obTotal++; } else if (ans === 'NOT_DONE') { obTotal++; }
           }
         });
-        aggBundleScores.OVERALL = { earned: obEarned, total: obTotal, percent: obTotal > 0 ? ((obEarned/obTotal)*100).toFixed(0) : 0 };
+        aggBundleScores.OVERALL = { earned: obEarned, total: obTotal, percent: obTotal > 0 ? ((obEarned/obTotal)*100).toFixed(2) : 0 };
         return { aggSectionScores, grandSummary, aggBundleScores };
       }, [answers, currentChecklist, numPeople, allPersonScores]);
 
@@ -1495,7 +1497,7 @@
                       </div>
                       <div className="px-4 py-2 bg-[#8ab278]/10 text-center print:bg-green-100">
                         <span className="block text-xs font-bold text-[#4d6b40] print:text-green-800">ร้อยละ</span>
-                        <span className="font-black text-[#4d6b40] text-lg print:text-green-800">{scoreStats.percentage}%</span>
+                        <span className="font-black text-[#4d6b40] text-lg print:text-green-800">{fmtPct(scoreStats.percentage)}%</span>
                       </div>
                     </div>
                   </div>
@@ -1542,7 +1544,7 @@
                     <span className="font-bold text-lg block text-slate-800 print:text-black">ภาพรวม Bundle รายบุคคล/เหตุการณ์ <span className="text-sm font-medium text-slate-500 ml-2 print:text-gray-500">(รวม {getActualBundleItemsCount(allPersonScores.mappingToUse, currentChecklist)} ข้อ)</span></span>
                     <span className="text-sm font-bold text-[#c2651b] mt-2 block">ส่วนที่เหลือ (ไม่ผ่าน/NA): {100 - (parseInt(bundleScores.OVERALL.percent) || 0)}%</span>
                   </div>
-                  <span className="text-5xl font-black text-slate-800 print:text-black">{bundleScores.OVERALL.percent}%</span>
+                  <span className="text-5xl font-black text-slate-800 print:text-black">{fmtPct(bundleScores.OVERALL.percent)}%</span>
                 </div>
               </section>
             )}
@@ -1552,7 +1554,7 @@
                   <span className="block font-black text-2xl">ผลคะแนนรวม: คนที่/เหตุการณ์ที่ {pIndex + 1}</span>
                   <span className="text-base font-bold text-slate-300 print:text-gray-600 mt-1 block">ได้ {totalSummary.earnedScore} จาก {totalSummary.fullScore} คะแนน</span>
                </div>
-               <span className="text-5xl font-black text-[#16bba6] print:text-black">{totalSummary.percentage}%</span>
+               <span className="text-5xl font-black text-[#16bba6] print:text-black">{fmtPct(totalSummary.percentage)}%</span>
             </div>
 
             {!hasSubmitted && (
@@ -1595,7 +1597,7 @@
                 </div>
                 <div className="bg-[#285c6c]/10 p-6 rounded-3xl border-2 border-[#285c6c]/30 shadow-sm text-center">
                    <span className="block text-[#285c6c] text-base mb-3 font-bold uppercase tracking-wide">ร้อยละรวมทั้งหน่วยงาน</span>
-                   <span className="text-6xl font-black text-[#238885]">{grandSummary.percentage}%</span>
+                   <span className="text-6xl font-black text-[#238885]">{fmtPct(grandSummary.percentage)}%</span>
                 </div>
              </div>
 
@@ -1607,7 +1609,7 @@
                     <div className="bg-slate-50 px-6 py-5 border-b-2 border-gray-200 flex justify-between items-center pdf-no-break print:bg-gray-100">
                        <h3 className="font-black text-[#32355c] text-lg md:text-xl print:text-black">{section.title}</h3>
                        <div className="text-base font-bold text-white bg-[#285c6c] px-5 py-2 rounded-xl shadow-md print:text-indigo-900 print:bg-transparent print:border-none">
-                          เฉลี่ย {section.percentage}%
+                          เฉลี่ย {fmtPct(section.percentage)}%
                        </div>
                     </div>
                     <div className="divide-y-2 divide-gray-100 print:divide-gray-200">
@@ -1630,9 +1632,9 @@
                                 </div>
                              </div>
                              <div className="flex flex-col items-end w-32 md:w-40 shrink-0">
-                                <span className={`font-black text-3xl ${scoreColor.text}`}>{item.percent}%</span>
+                                <span className={`font-black text-3xl ${scoreColor.text}`}>{fmtPct(item.percent)}%</span>
                                 <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2 mb-2 shadow-inner print:hidden">
-                                   <div className={`${scoreColor.bar} h-2.5 rounded-full`} style={{width: `${item.percent}%`, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact'}}></div>
+                                   <div className={`${scoreColor.bar} h-2.5 rounded-full`} style={{width: `${fmtPct(item.percent)}%`, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact'}}></div>
                                 </div>
                                 <span className="text-xs font-bold text-slate-500 hidden md:block">({item.earned}/{item.total} ครั้งที่ผ่าน)</span>
                              </div>
@@ -1657,7 +1659,7 @@
                          <span className="block font-bold text-slate-900 text-base md:text-xl">คะแนน Bundle เฉลี่ยทั้งหน่วยงาน <span className="text-sm font-medium text-slate-500 ml-2">(รวม {getActualBundleItemsCount(allPersonScores.mappingToUse, currentChecklist)} ข้อ)</span></span>
                          <span className="block text-base font-bold text-[#c2651b] mt-2">ร้อยละของส่วนที่เหลือ: {100 - (parseInt(aggBundleScores.OVERALL?.percent) || 0)}%</span>
                        </div>
-                       <span className="text-6xl font-black text-[#238885]">{aggBundleScores.OVERALL.percent}%</span>
+                       <span className="text-6xl font-black text-[#238885]">{fmtPct(aggBundleScores.OVERALL.percent)}%</span>
                     </div>
                  </section>
              )}
@@ -1684,7 +1686,7 @@
                     </div>
                     <div className="bg-[#238885] rounded-2xl p-5 text-center border-2 border-[#16bba6] shadow-lg col-span-2 md:col-span-1 print:bg-teal-100 print:border-teal-300">
                        <span className="block text-white print:text-teal-800 text-sm font-bold mb-2 uppercase tracking-wide">ร้อยละเฉลี่ย</span>
-                       <span className="text-5xl font-black text-white print:text-teal-900">{grandSummary.percentage}%</span>
+                       <span className="text-5xl font-black text-white print:text-teal-900">{fmtPct(grandSummary.percentage)}%</span>
                     </div>
                     
                     <div className="bg-white/10 rounded-2xl p-5 text-center border border-white/10 print:bg-gray-50 print:border-gray-300">
@@ -1781,7 +1783,7 @@
                         }
                     });
                     secEarned += iEarned; secTotal += iTotal;
-                    return { ...item, earned: iEarned, total: iTotal, done: iDone, notDone: iNotDone, na: iNa, percent: iTotal>0 ? ((iEarned/iTotal)*100).toFixed(0) : 0 };
+                    return { ...item, earned: iEarned, total: iTotal, done: iDone, notDone: iNotDone, na: iNa, percent: iTotal>0 ? ((iEarned/iTotal)*100).toFixed(2) : 0 };
                 });
                 return { ...section, earnedScore: secEarned, fullScore: secTotal, percentage: secTotal>0 ? ((secEarned/secTotal)*100).toFixed(2) : 0, items };
             });
@@ -1798,7 +1800,7 @@
                         }
                     });
                 });
-                aggBundles[key] = { earned: bEarned, total: bTotal, percent: bTotal>0 ? ((bEarned/bTotal)*100).toFixed(0) : 0 };
+                aggBundles[key] = { earned: bEarned, total: bTotal, percent: bTotal>0 ? ((bEarned/bTotal)*100).toFixed(2) : 0 };
             });
 
             const uniqueBundleItems = new Set();
@@ -1813,7 +1815,7 @@
                     }
                 });
             });
-            aggBundles.OVERALL = { earned: obEarned, total: obTotal, percent: obTotal>0 ? ((obEarned/obTotal)*100).toFixed(0) : 0 };
+            aggBundles.OVERALL = { earned: obEarned, total: obTotal, percent: obTotal>0 ? ((obEarned/obTotal)*100).toFixed(2) : 0 };
 
             let gFull = 0, gEarned = 0, gDone = 0, gNotDone = 0, gNa = 0;
             aggSections.forEach(sec => {
@@ -2090,39 +2092,39 @@
             wsData.push(["สรุปคะแนนรวมระดับโรงพยาบาล", ""]);
             wsData.push(["คะแนนเต็มรวม", grandSummary?.fullScore || 0]);
             wsData.push(["คะแนนที่ได้รวม", grandSummary?.earnedScore || 0]);
-            wsData.push(["คิดเป็นร้อยละเฉลี่ย", `${grandSummary?.percentage || 0}%`]);
+            wsData.push(["คิดเป็นร้อยละเฉลี่ย", `${fmtPct(grandSummary?.percentage || 0)}%`]);
             wsData.push(["จำนวนข้อที่ปฏิบัติ (Done)", grandSummary?.done || 0]);
             wsData.push(["จำนวนข้อที่ไม่ปฏิบัติ (Not Done)", grandSummary?.notDone || 0]);
             wsData.push(["จำนวนข้อที่ NA", grandSummary?.na || 0]);
             wsData.push([]);
             if (aggBundles && Object.keys(aggBundles).length > 0) {
                 wsData.push([`สรุป Bundle รวมระดับโรงพยาบาล (${dashType})`, "ร้อยละ", "จำนวนครั้งที่ผ่าน"]);
-                wsData.push(["ภาพรวม Bundle ทั้งหมด", `${aggBundles?.OVERALL?.percent || 0}%`, `${aggBundles?.OVERALL?.earned || 0}/${aggBundles?.OVERALL?.total || 0}`]);
+                wsData.push(["ภาพรวม Bundle ทั้งหมด", `${fmtPct(aggBundles?.OVERALL?.percent || 0)}%`, `${aggBundles?.OVERALL?.earned || 0}/${aggBundles?.OVERALL?.total || 0}`]);
                 keysToUse.forEach(key => {
                     const config = mappingToUse[key];
                     const data = aggBundles[key];
-                    wsData.push([`หมวด ${key} (${config.th})`, `${data?.percent || 0}%`, `${data?.earned || 0}/${data?.total || 0}`]);
+                    wsData.push([`หมวด ${key} (${config.th})`, `${fmtPct(data?.percent || 0)}%`, `${data?.earned || 0}/${data?.total || 0}`]);
                 });
                 wsData.push([]);
             }
             
             wsData.push(["สรุปผลการประเมินหัวข้อใหญ่ (รายหมวด)", "คะแนนเต็ม", "คะแนนที่ได้", "ร้อยละเฉลี่ย"]);
             aggSections.forEach(sec => {
-                wsData.push([sec.title, sec.fullScore, sec.earnedScore, `${sec.percentage}%`]);
+                wsData.push([sec.title, sec.fullScore, sec.earnedScore, `${fmtPct(sec.percentage)}%`]);
             });
             wsData.push([]);
 
             wsData.push(["รหัสข้อ", "หัวข้อการประเมิน", "รวมปฏิบัติ", "รวมไม่ปฏิบัติ", "รวม NA", "ร้อยละ (โรงพยาบาล)"]);
             aggSections.forEach(section => {
               wsData.push([section.title, "", "", "", "", ""]);
-              section.items.forEach(item => { wsData.push([item.id, item.text, item.done, item.notDone, item.na, `${item.percent}%`]); });
+              section.items.forEach(item => { wsData.push([item.id, item.text, item.done, item.notDone, item.na, `${fmtPct(item.percent)}%`]); });
             });
             if (deptAverages && deptAverages.length > 0) {
                 wsData.push([]);
                 wsData.push(["สรุปคะแนนเฉลี่ยรายหน่วยงาน", ""]);
                 wsData.push(["ประเภท", "หน่วยงาน", "จำนวนที่ประเมิน", "ร้อยละเฉลี่ย"]);
                 deptAverages.forEach(stat => {
-                    wsData.push([stat.deptType, stat.department, `${stat.count} ครั้ง (${stat.peopleCount} คน)`, `${stat.avg}%`]);
+                    wsData.push([stat.deptType, stat.department, `${stat.count} ครั้ง (${stat.peopleCount} คน)`, `${fmtPct(stat.avg)}%`]);
                 });
             }
             }
@@ -2295,7 +2297,7 @@
                           <div className="bg-white p-6 rounded-3xl border-2 border-gray-200 shadow-sm text-center print:border-gray-300"><span className="block text-slate-500 text-sm mb-2 font-bold uppercase tracking-wide">จำนวนหน่วยงาน</span><span className="text-5xl font-black text-[#314566]">{totalDepts}</span></div>
                           <div className="bg-white p-6 rounded-3xl border-2 border-gray-200 shadow-sm text-center print:border-gray-300"><span className="block text-slate-500 text-sm mb-2 font-bold uppercase tracking-wide">ผู้รับประเมิน</span><span className="text-5xl font-black text-[#314566]">{totalPeople} <span className="text-xl text-slate-400">คน/เหตุการณ์</span></span></div>
                           <div className="bg-white p-6 rounded-3xl border-2 border-gray-200 shadow-sm text-center print:border-gray-300"><span className="block text-slate-500 text-sm mb-2 font-bold uppercase tracking-wide">คะแนนที่ได้รวม</span><span className="text-4xl font-black text-[#314566]">{grandSummary?.earnedScore || 0}<span className="text-2xl text-gray-300 mx-2">/</span>{grandSummary?.fullScore || 0}</span></div>
-                          <div className="bg-[#285c6c]/10 p-6 rounded-3xl border-2 border-[#285c6c]/20 shadow-sm text-center print:bg-teal-50 print:border-teal-300"><span className="block text-[#285c6c] text-sm mb-2 font-bold uppercase tracking-wide">ร้อยละรวมทั้งโรงพยาบาล</span><span className="text-6xl font-black text-[#238885]">{grandSummary?.percentage || 0}%</span></div>
+                          <div className="bg-[#285c6c]/10 p-6 rounded-3xl border-2 border-[#285c6c]/20 shadow-sm text-center print:bg-teal-50 print:border-teal-300"><span className="block text-[#285c6c] text-sm mb-2 font-bold uppercase tracking-wide">ร้อยละรวมทั้งโรงพยาบาล</span><span className="text-6xl font-black text-[#238885]">{fmtPct(grandSummary?.percentage || 0)}%</span></div>
                        </div>
                        <div className="bg-slate-50 p-6 rounded-3xl shadow-sm border-2 border-gray-200 mb-10 pdf-no-break print:bg-white print:border-gray-300">
                           <span className="font-bold text-slate-800 block mb-4 text-xl">หน่วยงานที่เข้าร่วมการประเมิน ({records.length}):</span>
@@ -2348,7 +2350,7 @@
                           </div>
                           <div className="mt-8 bg-slate-50 rounded-2xl p-6 border-2 border-gray-200 flex justify-between items-center shadow-inner print:bg-white print:border-gray-300 print:shadow-none">
                              <div><span className="block font-bold text-slate-900 text-base md:text-xl">คะแนน Bundle เฉลี่ยทั้งโรงพยาบาล <span className="text-sm font-medium text-slate-500 ml-2">(รวม {getActualBundleItemsCount(mappingToUse, checklist)} ข้อ)</span></span><span className="block text-sm font-bold text-[#c2651b] mt-1.5">ร้อยละของส่วนที่เหลือ: {100 - (parseInt(aggBundles?.OVERALL?.percent) || 0)}%</span></div>
-                             <span className="text-6xl font-black text-[#238885]">{aggBundles?.OVERALL?.percent || 0}%</span>
+                             <span className="text-6xl font-black text-[#238885]">{fmtPct(aggBundles?.OVERALL?.percent || 0)}%</span>
                           </div>
                        </section>
 
@@ -2366,7 +2368,7 @@
                                                  return (
                                                  <tr key={sec.id} className={`border-b border-gray-100 last:border-0 print:border-gray-200 ${scoreColor.rowBg}`}>
                                                      <td className="py-5 px-6 font-black text-slate-800 text-lg">{sec.title}</td><td className="py-5 px-6 text-center font-bold text-slate-600 text-lg">{sec.fullScore}</td><td className="py-5 px-6 text-center font-bold text-[#238885] text-lg">{sec.earnedScore}</td>
-                                                     <td className="py-5 px-6"><div className="flex items-center gap-4"><div className="w-full bg-gray-200 rounded-full h-3.5 max-w-[200px] shadow-inner print:hidden"><div className={`h-3.5 rounded-full ${scoreColor.bar}`} style={{width: `${sec.percentage}%`, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact'}}></div></div><span className={`font-black text-xl min-w-[60px] text-right ${scoreColor.text}`}>{sec.percentage}%</span></div></td>
+                                                     <td className="py-5 px-6"><div className="flex items-center gap-4"><div className="w-full bg-gray-200 rounded-full h-3.5 max-w-[200px] shadow-inner print:hidden"><div className={`h-3.5 rounded-full ${scoreColor.bar}`} style={{width: `${fmtPct(sec.percentage)}%`, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact'}}></div></div><span className={`font-black text-xl min-w-[60px] text-right ${scoreColor.text}`}>{fmtPct(sec.percentage)}%</span></div></td>
                                                  </tr>
                                              )})}
                                          </tbody>
@@ -2379,7 +2381,7 @@
                        <h2 className="text-2xl font-black text-[#32355c] mt-12 mb-6 flex items-center gap-3 pdf-no-break"><FileText className="w-8 h-8 text-[#285c6c]" /> รายละเอียดผลการประเมินภาพรวมรายข้อ</h2>
                        {aggSections.map(section => (
                            <section key={section.id} className="bg-white rounded-3xl shadow-sm border-2 border-gray-200 overflow-hidden mb-6 print:border-gray-400">
-                              <div className="bg-slate-50 px-6 py-5 border-b-2 border-gray-200 flex justify-between items-center pdf-no-break print:bg-gray-100"><h3 className="font-black text-[#32355c] text-lg md:text-xl print:text-black">{section.title}</h3><div className="text-base font-bold text-white bg-[#285c6c] px-5 py-2 rounded-xl shadow-md print:text-indigo-900 print:bg-transparent print:border-none">เฉลี่ย {section.percentage}%</div></div>
+                              <div className="bg-slate-50 px-6 py-5 border-b-2 border-gray-200 flex justify-between items-center pdf-no-break print:bg-gray-100"><h3 className="font-black text-[#32355c] text-lg md:text-xl print:text-black">{section.title}</h3><div className="text-base font-bold text-white bg-[#285c6c] px-5 py-2 rounded-xl shadow-md print:text-indigo-900 print:bg-transparent print:border-none">เฉลี่ย {fmtPct(section.percentage)}%</div></div>
                               <div className="divide-y-2 divide-gray-100 print:divide-gray-200">
                                  {section.items.map(item => {
                                     const scoreColor = getScoreLevelColor(item.percent);
@@ -2391,8 +2393,8 @@
                                           <div className="flex-1 mt-0.5"><span className="text-slate-800 font-bold leading-relaxed">{item.text}</span><div className="mt-2 text-sm text-slate-500 hidden sm:block font-bold">[ผู้รับประเมิน: {item.total} คน/เหตุการณ์ | ปฏิบัติ: {item.done} | ไม่ปฏิบัติ: {item.notDone} | NA: {item.na}]</div></div>
                                        </div>
                                        <div className="flex flex-col items-end w-32 md:w-40 shrink-0">
-                                          <span className={`font-black text-3xl ${scoreColor.text}`}>{item.percent}%</span>
-                                          <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2 mb-2 shadow-inner print:hidden"><div className={`${scoreColor.bar} h-2.5 rounded-full`} style={{width: `${item.percent}%`, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact'}}></div></div>
+                                          <span className={`font-black text-3xl ${scoreColor.text}`}>{fmtPct(item.percent)}%</span>
+                                          <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2 mb-2 shadow-inner print:hidden"><div className={`${scoreColor.bar} h-2.5 rounded-full`} style={{width: `${fmtPct(item.percent)}%`, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact'}}></div></div>
                                           <span className="text-xs font-bold text-slate-500 hidden md:block">({item.earned}/{item.total} ครั้งที่ผ่าน)</span>
                                        </div>
                                     </div>
@@ -2413,7 +2415,7 @@
                                               return (
                                               <tr key={stat.deptType} className={`border-b-2 border-gray-50 last:border-0 print:border-gray-200 ${scoreColor.rowBg}`}>
                                                   <td className="py-5 px-6 font-black text-slate-800 text-xl">{stat.deptType}</td><td className="py-5 px-6 text-center font-bold text-slate-600 text-lg">{stat.count}</td><td className="py-5 px-6 text-center font-bold text-[#238885] text-lg">{stat.peopleCount}</td>
-                                                  <td className="py-5 px-6"><div className="flex items-center gap-4"><div className="w-full bg-gray-200 rounded-full h-3.5 max-w-[250px] shadow-inner print:hidden"><div className={`h-3.5 rounded-full ${scoreColor.bar}`} style={{width: `${stat.avg}%`, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact'}}></div></div><span className={`font-black text-2xl min-w-[80px] text-right ${scoreColor.text}`}>{stat.avg}%</span></div></td>
+                                                  <td className="py-5 px-6"><div className="flex items-center gap-4"><div className="w-full bg-gray-200 rounded-full h-3.5 max-w-[250px] shadow-inner print:hidden"><div className={`h-3.5 rounded-full ${scoreColor.bar}`} style={{width: `${fmtPct(stat.avg)}%`, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact'}}></div></div><span className={`font-black text-2xl min-w-[80px] text-right ${scoreColor.text}`}>{fmtPct(stat.avg)}%</span></div></td>
                                               </tr>
                                           )})}
                                       </tbody>
@@ -2650,7 +2652,7 @@
                const recs = map[dept].slice().sort((a, b) => b.id - a.id);
                let e = 0, f = 0;
                recs.forEach(r => { const p = parseFloat(r.overallSummaryData?.grandSummary?.percentage || 0); if (!isNaN(p)) { e += p; f++; } });
-               return { department: dept, records: recs, count: recs.length, deptType: recs[0]?.deptType || '-', avg: f > 0 ? (e / f).toFixed(1) : '0' };
+               return { department: dept, records: recs, count: recs.length, deptType: recs[0]?.deptType || '-', avg: f > 0 ? (e / f).toFixed(2) : '0' };
             });
             const q = icnSearch.trim().toLowerCase();
             if (q) arr = arr.filter(g => g.department.toLowerCase().includes(q));
@@ -2674,7 +2676,7 @@
             wsData.push(["ผู้ประเมิน (ICN)", r.assessorName || '-']);
             wsData.push(["วันที่ประเมิน", dateStr]);
             wsData.push(["จำนวนผู้รับการประเมิน", (r.numPeople || '-') + " คน/เหตุการณ์"]);
-            wsData.push(["ร้อยละเฉลี่ยรวม", (r.overallSummaryData?.grandSummary?.percentage || '0') + "%"]);
+            wsData.push(["ร้อยละเฉลี่ยรวม", fmtPct(r.overallSummaryData?.grandSummary?.percentage || '0') + "%"]);
 
             const secs = r.overallSummaryData?.aggSectionScores || [];
             const hasItems = secs.some(s => (s.items || []).length > 0);
@@ -2684,14 +2686,14 @@
                secs.forEach(sec => {
                   wsData.push([sec.title]);
                   (sec.items || []).forEach(it => {
-                     wsData.push([`${it.id}  ${it.text}`, (it.done != null ? it.done : 0), (it.notDone != null ? it.notDone : 0), (it.percent != null ? it.percent : 0) + "%"]);
+                     wsData.push([`${it.id}  ${it.text}`, (it.done != null ? it.done : 0), (it.notDone != null ? it.notDone : 0), fmtPct(it.percent != null ? it.percent : 0) + "%"]);
                   });
                });
                wsData.push([]);
                wsData.push(["สรุปคะแนนรายหมวด", "คะแนนเต็ม", "คะแนนที่ได้", "ร้อยละเฉลี่ย"]);
-               secs.forEach(sec => wsData.push([sec.title, sec.fullScore || 0, sec.earnedScore || 0, (sec.percentage || 0) + "%"]));
+               secs.forEach(sec => wsData.push([sec.title, sec.fullScore || 0, sec.earnedScore || 0, fmtPct(sec.percentage || 0) + "%"]));
                const g = r.overallSummaryData.grandSummary || {};
-               wsData.push(["รวมทั้งหมด", g.fullScore || 0, g.earnedScore || 0, (g.percentage || 0) + "%"]);
+               wsData.push(["รวมทั้งหมด", g.fullScore || 0, g.earnedScore || 0, fmtPct(g.percentage || 0) + "%"]);
             }
 
             if ((r.commendation && String(r.commendation).trim()) || (r.suggestion && String(r.suggestion).trim())) {
@@ -2764,7 +2766,7 @@
                               </div>
                               <div className="flex items-center gap-4 shrink-0">
                                  <div className="text-right">
-                                    <div className={`text-2xl font-black ${scoreColor.text}`}>{g.avg}%</div>
+                                    <div className={`text-2xl font-black ${scoreColor.text}`}>{fmtPct(g.avg)}%</div>
                                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">เฉลี่ย</div>
                                  </div>
                                  <ChevronDown className={`w-6 h-6 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -2782,7 +2784,7 @@
                                              <div className="text-sm text-slate-500 font-medium">{ds} · ผู้ประเมิน: {r.assessorName || '-'} · {r.numPeople || '-'} คน/เหตุการณ์</div>
                                           </div>
                                           <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-                                             <span className={`text-xl font-black ${rc.text}`}>{r.overallSummaryData?.grandSummary?.percentage || '0'}%</span>
+                                             <span className={`text-xl font-black ${rc.text}`}>{fmtPct(r.overallSummaryData?.grandSummary?.percentage || '0')}%</span>
                                              <button onClick={() => handlePrintRecord(r)} disabled={isGeneratingPDF} className={`text-white px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 font-bold shadow-md transition-colors ${isGeneratingPDF ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#f1a164] hover:bg-[#de8f55]'}`}><Printer className="w-5 h-5" /> พิมพ์ผลการประเมิน</button>
                                           </div>
                                        </div>
@@ -2971,7 +2973,7 @@
                     bundleAveragesByType[type] = {};
                     Object.keys(bundleStatsByType[type]).forEach(bKey => {
                         const stats = bundleStatsByType[type][bKey];
-                        bundleAveragesByType[type][bKey] = { earned: stats.earned, total: stats.total, percent: stats.total > 0 ? ((stats.earned / stats.total) * 100).toFixed(0) : 0 };
+                        bundleAveragesByType[type][bKey] = { earned: stats.earned, total: stats.total, percent: stats.total > 0 ? ((stats.earned / stats.total) * 100).toFixed(2) : 0 };
                     });
                 }
             });
@@ -3005,12 +3007,12 @@
                   byMonthMap[ym].e += e; byMonthMap[ym].f += f; byMonthMap[ym].count++;
                }
             });
-            const toArr = (m) => Object.keys(m).map(k => ({ label: k, value: m[k].f > 0 ? ((m[k].e / m[k].f) * 100).toFixed(1) : 0, count: m[k].count }));
+            const toArr = (m) => Object.keys(m).map(k => ({ label: k, value: m[k].f > 0 ? ((m[k].e / m[k].f) * 100).toFixed(2) : 0, count: m[k].count }));
             return {
                byDeptType: toArr(byDeptTypeMap).sort((a, b) => a.label.localeCompare(b.label, 'th')),
                byDept: toArr(byDeptMap).sort((a, b) => parseFloat(b.value) - parseFloat(a.value)),
                byType: toArr(byTypeMap).sort((a, b) => parseFloat(b.value) - parseFloat(a.value)),
-               byMonth: Object.keys(byMonthMap).map(Number).sort((a, b) => a - b).map(ym => ({ label: byMonthMap[ym].label, value: byMonthMap[ym].f > 0 ? ((byMonthMap[ym].e / byMonthMap[ym].f) * 100).toFixed(1) : 0, count: byMonthMap[ym].count }))
+               byMonth: Object.keys(byMonthMap).map(Number).sort((a, b) => a - b).map(ym => ({ label: byMonthMap[ym].label, value: byMonthMap[ym].f > 0 ? ((byMonthMap[ym].e / byMonthMap[ym].f) * 100).toFixed(2) : 0, count: byMonthMap[ym].count }))
             };
          }, [summarySource]);
 
@@ -3035,7 +3037,7 @@
                          r.department,
                          r.assessorName,
                          r.numPeople,
-                         `${r.overallSummaryData?.grandSummary?.percentage || '0'}%`
+                         `${fmtPct(r.overallSummaryData?.grandSummary?.percentage || '0')}%`
                      ]);
                  });
              }
@@ -3160,7 +3162,7 @@
                                       <td className="p-4 font-black text-slate-800 print:text-black">{r.department || '-'}</td>
                                       <td className="p-4 font-medium text-slate-700 print:text-black">{r.assessorName || '-'}</td>
                                       <td className="p-4 font-black text-center text-[#238885] print:text-black">{r.numPeople || '-'}</td>
-                                      <td className="p-4 font-black text-[#16bba6] text-right text-xl print:text-black">{r.overallSummaryData?.grandSummary?.percentage || '0'}%</td>
+                                      <td className="p-4 font-black text-[#16bba6] text-right text-xl print:text-black">{fmtPct(r.overallSummaryData?.grandSummary?.percentage || '0')}%</td>
                                       <td className="p-4 text-center print:hidden"><button onClick={() => handleDeleteRecord(r)} className="text-rose-500 hover:bg-rose-100 p-2.5 rounded-xl transition-colors" title="ลบข้อมูลนี้"><Trash2 className="w-5 h-5 inline" /></button></td>
                                    </tr>
                                 )})
@@ -3190,8 +3192,8 @@
                                 </div>
                                 <div className="bg-[#16bba6]/10 rounded-3xl p-8 border-2 border-[#16bba6]/30 flex flex-col items-center justify-center shadow-sm print:bg-white print:border-gray-300">
                                     <span className="text-[#0d7a6c] font-bold mb-3 text-sm text-center uppercase tracking-wide print:text-gray-600">คะแนนเฉลี่ยรวมทุกประเภท</span>
-                                    <div className="flex items-baseline gap-2"><span className="text-6xl font-black text-[#238885] print:text-black">{summaryStats.overallAvg}%</span></div>
-                                    <div className="w-full bg-white rounded-full h-3 mt-5 max-w-[180px] print:hidden"><div className="bg-[#238885] h-3 rounded-full" style={{width: `${summaryStats.overallAvg}%`}}></div></div>
+                                    <div className="flex items-baseline gap-2"><span className="text-6xl font-black text-[#238885] print:text-black">{fmtPct(summaryStats.overallAvg)}%</span></div>
+                                    <div className="w-full bg-white rounded-full h-3 mt-5 max-w-[180px] print:hidden"><div className="bg-[#238885] h-3 rounded-full" style={{width: `${fmtPct(summaryStats.overallAvg)}%`}}></div></div>
                                 </div>
                             </div>
 
@@ -3237,7 +3239,7 @@
                                         </div>
                                         <div className="mt-8 bg-slate-50 rounded-2xl p-6 border-2 border-gray-200 flex justify-between items-center shadow-inner print:bg-white print:border-gray-300">
                                         <div><span className="block font-black text-slate-800 text-lg md:text-2xl">คะแนน Bundle เฉลี่ยภาพรวม ({type}) <span className="text-base font-bold text-slate-500 ml-2">(รวม {actualItemCount} ข้อ)</span></span><span className="block text-base font-bold text-[#c2651b] mt-2">ร้อยละของส่วนที่เหลือ: {100 - (parseInt(aggBundles.OVERALL?.percent) || 0)}%</span></div>
-                                        <span className="text-6xl font-black text-[#238885]">{aggBundles.OVERALL?.percent || 0}%</span>
+                                        <span className="text-6xl font-black text-[#238885]">{fmtPct(aggBundles.OVERALL?.percent || 0)}%</span>
                                         </div>
                                     </section>
                                 );

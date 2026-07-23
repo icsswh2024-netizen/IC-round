@@ -831,7 +831,7 @@ const BundleCard = ({
   className: "w-full bg-black/10 rounded-xl p-3 border border-white/10 flex flex-col items-center shadow-inner print:bg-gray-50 print:border-gray-100"
 }, /*#__PURE__*/React.createElement("span", {
   className: "block text-4xl font-black text-white leading-none print:text-[#238885]"
-}, data?.percent || 0, "%"), /*#__PURE__*/React.createElement("span", {
+}, fmtPct(data?.percent || 0), "%"), /*#__PURE__*/React.createElement("span", {
   className: "block text-xs font-bold text-white/80 mt-2 print:text-slate-500"
 }, "ผ่าน: ", data?.earned || 0, "/", data?.total || 0), /*#__PURE__*/React.createElement("div", {
   className: "w-full bg-black/20 rounded-lg px-2 py-1.5 border border-white/20 mt-3 print:bg-[#f1a164]/10 print:border-[#f1a164]/30"
@@ -1259,6 +1259,12 @@ const scoreHex = p => {
   if (v >= 60) return '#e9c460';
   return '#f1a164';
 };
+// จัดรูปแบบร้อยละ: ทศนิยม 2 ตำแหน่ง แต่ถ้าเป็นจำนวนเต็ม (เช่น 100, 80, 50) ไม่ใส่ทศนิยม
+const fmtPct = p => {
+  const v = parseFloat(p);
+  if (isNaN(v)) return '0';
+  return Number.isInteger(v) ? String(v) : v.toFixed(2);
+};
 const ChartCard = ({
   title,
   subtitle,
@@ -1361,7 +1367,7 @@ const VBarChart = ({
       style: {
         color: scoreHex(v)
       }
-    }, v.toFixed(1), "%"), /*#__PURE__*/React.createElement("div", {
+    }, fmtPct(v), "%"), /*#__PURE__*/React.createElement("div", {
       style: {
         height: Math.max(v / 100 * H, 2),
         width: '64%',
@@ -1426,7 +1432,7 @@ const HBarChart = ({
       style: {
         color: scoreHex(v)
       }
-    }, v.toFixed(1), "%", d.count != null ? /*#__PURE__*/React.createElement("span", {
+    }, fmtPct(v), "%", d.count != null ? /*#__PURE__*/React.createElement("span", {
       className: "text-[10px] text-slate-400 font-medium block leading-none"
     }, d.count, " ครั้ง") : null));
   }));
@@ -1501,7 +1507,7 @@ const LineChart = ({
       fontSize: "11",
       fontWeight: "700",
       fill: "#238885"
-    }, v.toFixed(0), "%"), /*#__PURE__*/React.createElement("text", {
+    }, fmtPct(v), "%"), /*#__PURE__*/React.createElement("text", {
       x: x(i),
       y: H - 8,
       textAnchor: "middle",
@@ -2662,7 +2668,7 @@ function App() {
         bundleScores[key] = {
           earned,
           total,
-          percent: total > 0 ? (earned / total * 100).toFixed(0) : 0
+          percent: total > 0 ? (earned / total * 100).toFixed(2) : 0
         };
       });
       const uniqueBundleItems = new Set();
@@ -2681,7 +2687,7 @@ function App() {
       bundleScores.OVERALL = {
         earned: overallEarned,
         total: overallTotal,
-        percent: overallTotal > 0 ? (overallEarned / overallTotal * 100).toFixed(0) : 0
+        percent: overallTotal > 0 ? (overallEarned / overallTotal * 100).toFixed(2) : 0
       };
       scoresArray.push({
         sectionScores,
@@ -2724,7 +2730,7 @@ function App() {
           text: item.text,
           earned: itemEarned,
           total: itemTotal,
-          percent: itemTotal > 0 ? (itemEarned / itemTotal * 100).toFixed(0) : 0,
+          percent: itemTotal > 0 ? (itemEarned / itemTotal * 100).toFixed(2) : 0,
           done: itemDone,
           notDone: itemNotDone,
           na: itemNA
@@ -2784,7 +2790,7 @@ function App() {
       aggBundleScores[key] = {
         earned: bEarned,
         total: bTotal,
-        percent: bTotal > 0 ? (bEarned / bTotal * 100).toFixed(0) : 0
+        percent: bTotal > 0 ? (bEarned / bTotal * 100).toFixed(2) : 0
       };
     });
     const uniqueBundleItems = new Set();
@@ -2805,7 +2811,7 @@ function App() {
     aggBundleScores.OVERALL = {
       earned: obEarned,
       total: obTotal,
-      percent: obTotal > 0 ? (obEarned / obTotal * 100).toFixed(0) : 0
+      percent: obTotal > 0 ? (obEarned / obTotal * 100).toFixed(2) : 0
     };
     return {
       aggSectionScores,
@@ -2977,7 +2983,7 @@ function App() {
         className: "block text-xs font-bold text-[#4d6b40] print:text-green-800"
       }, "ร้อยละ"), /*#__PURE__*/React.createElement("span", {
         className: "font-black text-[#4d6b40] text-lg print:text-green-800"
-      }, scoreStats.percentage, "%")))), /*#__PURE__*/React.createElement("div", {
+      }, fmtPct(scoreStats.percentage), "%")))), /*#__PURE__*/React.createElement("div", {
         className: "divide-y divide-gray-100 print:divide-gray-200"
       }, section.items.map(item => /*#__PURE__*/React.createElement("div", {
         key: item.id,
@@ -3037,7 +3043,7 @@ function App() {
       className: "text-sm font-bold text-[#c2651b] mt-2 block"
     }, "ส่วนที่เหลือ (ไม่ผ่าน/NA): ", 100 - (parseInt(bundleScores.OVERALL.percent) || 0), "%")), /*#__PURE__*/React.createElement("span", {
       className: "text-5xl font-black text-slate-800 print:text-black"
-    }, bundleScores.OVERALL.percent, "%"))), /*#__PURE__*/React.createElement("div", {
+    }, fmtPct(bundleScores.OVERALL.percent), "%"))), /*#__PURE__*/React.createElement("div", {
       className: "bg-[#32355c] text-white p-6 rounded-3xl shadow-xl mt-6 flex justify-between items-center pdf-no-break print:bg-gray-100 print:text-black print:border print:border-gray-400 print:shadow-none"
     }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
       className: "block font-black text-2xl"
@@ -3045,7 +3051,7 @@ function App() {
       className: "text-base font-bold text-slate-300 print:text-gray-600 mt-1 block"
     }, "ได้ ", totalSummary.earnedScore, " จาก ", totalSummary.fullScore, " คะแนน")), /*#__PURE__*/React.createElement("span", {
       className: "text-5xl font-black text-[#16bba6] print:text-black"
-    }, totalSummary.percentage, "%")), !hasSubmitted && /*#__PURE__*/React.createElement("div", {
+    }, fmtPct(totalSummary.percentage), "%")), !hasSubmitted && /*#__PURE__*/React.createElement("div", {
       className: "mt-8 flex justify-end print:hidden"
     }, completedPeople[pIndex] ? /*#__PURE__*/React.createElement("div", {
       className: "bg-[#8ab278]/20 border-2 border-[#8ab278] text-[#4d6b40] px-8 py-4 rounded-2xl font-bold text-xl flex items-center gap-3 shadow-sm"
@@ -3098,7 +3104,7 @@ function App() {
       className: "block text-[#285c6c] text-base mb-3 font-bold uppercase tracking-wide"
     }, "ร้อยละรวมทั้งหน่วยงาน"), /*#__PURE__*/React.createElement("span", {
       className: "text-6xl font-black text-[#238885]"
-    }, grandSummary.percentage, "%"))), /*#__PURE__*/React.createElement("h2", {
+    }, fmtPct(grandSummary.percentage), "%"))), /*#__PURE__*/React.createElement("h2", {
       className: "text-2xl font-black text-[#32355c] mt-12 mb-6 flex items-center gap-3 pdf-no-break"
     }, /*#__PURE__*/React.createElement(FileText, {
       className: "w-8 h-8 text-[#285c6c]"
@@ -3111,7 +3117,7 @@ function App() {
       className: "font-black text-[#32355c] text-lg md:text-xl print:text-black"
     }, section.title), /*#__PURE__*/React.createElement("div", {
       className: "text-base font-bold text-white bg-[#285c6c] px-5 py-2 rounded-xl shadow-md print:text-indigo-900 print:bg-transparent print:border-none"
-    }, "เฉลี่ย ", section.percentage, "%")), /*#__PURE__*/React.createElement("div", {
+    }, "เฉลี่ย ", fmtPct(section.percentage), "%")), /*#__PURE__*/React.createElement("div", {
       className: "divide-y-2 divide-gray-100 print:divide-gray-200"
     }, section.items.map(item => {
       const scoreColor = getScoreLevelColor(item.percent);
@@ -3137,12 +3143,12 @@ function App() {
         className: "flex flex-col items-end w-32 md:w-40 shrink-0"
       }, /*#__PURE__*/React.createElement("span", {
         className: `font-black text-3xl ${scoreColor.text}`
-      }, item.percent, "%"), /*#__PURE__*/React.createElement("div", {
+      }, fmtPct(item.percent), "%"), /*#__PURE__*/React.createElement("div", {
         className: "w-full bg-gray-200 rounded-full h-2.5 mt-2 mb-2 shadow-inner print:hidden"
       }, /*#__PURE__*/React.createElement("div", {
         className: `${scoreColor.bar} h-2.5 rounded-full`,
         style: {
-          width: `${item.percent}%`,
+          width: `${fmtPct(item.percent)}%`,
           WebkitPrintColorAdjust: 'exact',
           printColorAdjust: 'exact'
         }
@@ -3172,7 +3178,7 @@ function App() {
       className: "block text-base font-bold text-[#c2651b] mt-2"
     }, "ร้อยละของส่วนที่เหลือ: ", 100 - (parseInt(aggBundleScores.OVERALL?.percent) || 0), "%")), /*#__PURE__*/React.createElement("span", {
       className: "text-6xl font-black text-[#238885]"
-    }, aggBundleScores.OVERALL.percent, "%"))), /*#__PURE__*/React.createElement("section", {
+    }, fmtPct(aggBundleScores.OVERALL.percent), "%"))), /*#__PURE__*/React.createElement("section", {
       className: "bg-[#32355c] rounded-3xl shadow-2xl text-white p-8 mt-10 pdf-no-break print:bg-white print:text-black print:border-2 print:border-gray-400 print:shadow-none"
     }, /*#__PURE__*/React.createElement("div", {
       className: "flex flex-col md:flex-row items-center justify-between gap-5 border-b-2 border-white/20 pb-6 print:border-gray-300"
@@ -3204,7 +3210,7 @@ function App() {
       className: "block text-white print:text-teal-800 text-sm font-bold mb-2 uppercase tracking-wide"
     }, "ร้อยละเฉลี่ย"), /*#__PURE__*/React.createElement("span", {
       className: "text-5xl font-black text-white print:text-teal-900"
-    }, grandSummary.percentage, "%")), /*#__PURE__*/React.createElement("div", {
+    }, fmtPct(grandSummary.percentage), "%")), /*#__PURE__*/React.createElement("div", {
       className: "bg-white/10 rounded-2xl p-5 text-center border border-white/10 print:bg-gray-50 print:border-gray-300"
     }, /*#__PURE__*/React.createElement("span", {
       className: "block text-[#8ab278] print:text-green-600 text-sm font-bold mb-2 uppercase tracking-wide"
@@ -3339,7 +3345,7 @@ function App() {
             done: iDone,
             notDone: iNotDone,
             na: iNa,
-            percent: iTotal > 0 ? (iEarned / iTotal * 100).toFixed(0) : 0
+            percent: iTotal > 0 ? (iEarned / iTotal * 100).toFixed(2) : 0
           };
         });
         return {
@@ -3366,7 +3372,7 @@ function App() {
         aggBundles[key] = {
           earned: bEarned,
           total: bTotal,
-          percent: bTotal > 0 ? (bEarned / bTotal * 100).toFixed(0) : 0
+          percent: bTotal > 0 ? (bEarned / bTotal * 100).toFixed(2) : 0
         };
       });
       const uniqueBundleItems = new Set();
@@ -3385,7 +3391,7 @@ function App() {
       aggBundles.OVERALL = {
         earned: obEarned,
         total: obTotal,
-        percent: obTotal > 0 ? (obEarned / obTotal * 100).toFixed(0) : 0
+        percent: obTotal > 0 ? (obEarned / obTotal * 100).toFixed(2) : 0
       };
       let gFull = 0,
         gEarned = 0,
@@ -3716,31 +3722,31 @@ function App() {
         wsData.push(["สรุปคะแนนรวมระดับโรงพยาบาล", ""]);
         wsData.push(["คะแนนเต็มรวม", grandSummary?.fullScore || 0]);
         wsData.push(["คะแนนที่ได้รวม", grandSummary?.earnedScore || 0]);
-        wsData.push(["คิดเป็นร้อยละเฉลี่ย", `${grandSummary?.percentage || 0}%`]);
+        wsData.push(["คิดเป็นร้อยละเฉลี่ย", `${fmtPct(grandSummary?.percentage || 0)}%`]);
         wsData.push(["จำนวนข้อที่ปฏิบัติ (Done)", grandSummary?.done || 0]);
         wsData.push(["จำนวนข้อที่ไม่ปฏิบัติ (Not Done)", grandSummary?.notDone || 0]);
         wsData.push(["จำนวนข้อที่ NA", grandSummary?.na || 0]);
         wsData.push([]);
         if (aggBundles && Object.keys(aggBundles).length > 0) {
           wsData.push([`สรุป Bundle รวมระดับโรงพยาบาล (${dashType})`, "ร้อยละ", "จำนวนครั้งที่ผ่าน"]);
-          wsData.push(["ภาพรวม Bundle ทั้งหมด", `${aggBundles?.OVERALL?.percent || 0}%`, `${aggBundles?.OVERALL?.earned || 0}/${aggBundles?.OVERALL?.total || 0}`]);
+          wsData.push(["ภาพรวม Bundle ทั้งหมด", `${fmtPct(aggBundles?.OVERALL?.percent || 0)}%`, `${aggBundles?.OVERALL?.earned || 0}/${aggBundles?.OVERALL?.total || 0}`]);
           keysToUse.forEach(key => {
             const config = mappingToUse[key];
             const data = aggBundles[key];
-            wsData.push([`หมวด ${key} (${config.th})`, `${data?.percent || 0}%`, `${data?.earned || 0}/${data?.total || 0}`]);
+            wsData.push([`หมวด ${key} (${config.th})`, `${fmtPct(data?.percent || 0)}%`, `${data?.earned || 0}/${data?.total || 0}`]);
           });
           wsData.push([]);
         }
         wsData.push(["สรุปผลการประเมินหัวข้อใหญ่ (รายหมวด)", "คะแนนเต็ม", "คะแนนที่ได้", "ร้อยละเฉลี่ย"]);
         aggSections.forEach(sec => {
-          wsData.push([sec.title, sec.fullScore, sec.earnedScore, `${sec.percentage}%`]);
+          wsData.push([sec.title, sec.fullScore, sec.earnedScore, `${fmtPct(sec.percentage)}%`]);
         });
         wsData.push([]);
         wsData.push(["รหัสข้อ", "หัวข้อการประเมิน", "รวมปฏิบัติ", "รวมไม่ปฏิบัติ", "รวม NA", "ร้อยละ (โรงพยาบาล)"]);
         aggSections.forEach(section => {
           wsData.push([section.title, "", "", "", "", ""]);
           section.items.forEach(item => {
-            wsData.push([item.id, item.text, item.done, item.notDone, item.na, `${item.percent}%`]);
+            wsData.push([item.id, item.text, item.done, item.notDone, item.na, `${fmtPct(item.percent)}%`]);
           });
         });
         if (deptAverages && deptAverages.length > 0) {
@@ -3748,7 +3754,7 @@ function App() {
           wsData.push(["สรุปคะแนนเฉลี่ยรายหน่วยงาน", ""]);
           wsData.push(["ประเภท", "หน่วยงาน", "จำนวนที่ประเมิน", "ร้อยละเฉลี่ย"]);
           deptAverages.forEach(stat => {
-            wsData.push([stat.deptType, stat.department, `${stat.count} ครั้ง (${stat.peopleCount} คน)`, `${stat.avg}%`]);
+            wsData.push([stat.deptType, stat.department, `${stat.count} ครั้ง (${stat.peopleCount} คน)`, `${fmtPct(stat.avg)}%`]);
           });
         }
       }
@@ -4087,7 +4093,7 @@ function App() {
       className: "block text-[#285c6c] text-sm mb-2 font-bold uppercase tracking-wide"
     }, "ร้อยละรวมทั้งโรงพยาบาล"), /*#__PURE__*/React.createElement("span", {
       className: "text-6xl font-black text-[#238885]"
-    }, grandSummary?.percentage || 0, "%"))), /*#__PURE__*/React.createElement("div", {
+    }, fmtPct(grandSummary?.percentage || 0), "%"))), /*#__PURE__*/React.createElement("div", {
       className: "bg-slate-50 p-6 rounded-3xl shadow-sm border-2 border-gray-200 mb-10 pdf-no-break print:bg-white print:border-gray-300"
     }, /*#__PURE__*/React.createElement("span", {
       className: "font-bold text-slate-800 block mb-4 text-xl"
@@ -4164,7 +4170,7 @@ function App() {
       className: "block text-sm font-bold text-[#c2651b] mt-1.5"
     }, "ร้อยละของส่วนที่เหลือ: ", 100 - (parseInt(aggBundles?.OVERALL?.percent) || 0), "%")), /*#__PURE__*/React.createElement("span", {
       className: "text-6xl font-black text-[#238885]"
-    }, aggBundles?.OVERALL?.percent || 0, "%"))), aggSections?.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("h2", {
+    }, fmtPct(aggBundles?.OVERALL?.percent || 0), "%"))), aggSections?.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("h2", {
       className: "text-2xl font-black text-[#32355c] mt-12 mb-6 flex items-center gap-3 pdf-no-break"
     }, /*#__PURE__*/React.createElement(PieChart, {
       className: "w-8 h-8 text-[#285c6c]"
@@ -4208,13 +4214,13 @@ function App() {
       }, /*#__PURE__*/React.createElement("div", {
         className: `h-3.5 rounded-full ${scoreColor.bar}`,
         style: {
-          width: `${sec.percentage}%`,
+          width: `${fmtPct(sec.percentage)}%`,
           WebkitPrintColorAdjust: 'exact',
           printColorAdjust: 'exact'
         }
       })), /*#__PURE__*/React.createElement("span", {
         className: `font-black text-xl min-w-[60px] text-right ${scoreColor.text}`
-      }, sec.percentage, "%"))));
+      }, fmtPct(sec.percentage), "%"))));
     })))))), /*#__PURE__*/React.createElement("h2", {
       className: "text-2xl font-black text-[#32355c] mt-12 mb-6 flex items-center gap-3 pdf-no-break"
     }, /*#__PURE__*/React.createElement(FileText, {
@@ -4228,7 +4234,7 @@ function App() {
       className: "font-black text-[#32355c] text-lg md:text-xl print:text-black"
     }, section.title), /*#__PURE__*/React.createElement("div", {
       className: "text-base font-bold text-white bg-[#285c6c] px-5 py-2 rounded-xl shadow-md print:text-indigo-900 print:bg-transparent print:border-none"
-    }, "เฉลี่ย ", section.percentage, "%")), /*#__PURE__*/React.createElement("div", {
+    }, "เฉลี่ย ", fmtPct(section.percentage), "%")), /*#__PURE__*/React.createElement("div", {
       className: "divide-y-2 divide-gray-100 print:divide-gray-200"
     }, section.items.map(item => {
       const scoreColor = getScoreLevelColor(item.percent);
@@ -4254,12 +4260,12 @@ function App() {
         className: "flex flex-col items-end w-32 md:w-40 shrink-0"
       }, /*#__PURE__*/React.createElement("span", {
         className: `font-black text-3xl ${scoreColor.text}`
-      }, item.percent, "%"), /*#__PURE__*/React.createElement("div", {
+      }, fmtPct(item.percent), "%"), /*#__PURE__*/React.createElement("div", {
         className: "w-full bg-gray-200 rounded-full h-2.5 mt-2 mb-2 shadow-inner print:hidden"
       }, /*#__PURE__*/React.createElement("div", {
         className: `${scoreColor.bar} h-2.5 rounded-full`,
         style: {
-          width: `${item.percent}%`,
+          width: `${fmtPct(item.percent)}%`,
           WebkitPrintColorAdjust: 'exact',
           printColorAdjust: 'exact'
         }
@@ -4310,13 +4316,13 @@ function App() {
       }, /*#__PURE__*/React.createElement("div", {
         className: `h-3.5 rounded-full ${scoreColor.bar}`,
         style: {
-          width: `${stat.avg}%`,
+          width: `${fmtPct(stat.avg)}%`,
           WebkitPrintColorAdjust: 'exact',
           printColorAdjust: 'exact'
         }
       })), /*#__PURE__*/React.createElement("span", {
         className: `font-black text-2xl min-w-[80px] text-right ${scoreColor.text}`
-      }, stat.avg, "%"))));
+      }, fmtPct(stat.avg), "%"))));
     })))))), !dashType && crossTabStats && crossTabStats.deptList.length > 0 && /*#__PURE__*/React.createElement("div", {
       className: "bg-white rounded-3xl shadow-sm border-2 border-gray-200 overflow-hidden mb-8 pdf-no-break print:border-gray-400 mt-12"
     }, /*#__PURE__*/React.createElement("div", {
@@ -4568,7 +4574,7 @@ function App() {
           records: recs,
           count: recs.length,
           deptType: recs[0]?.deptType || '-',
-          avg: f > 0 ? (e / f).toFixed(1) : '0'
+          avg: f > 0 ? (e / f).toFixed(2) : '0'
         };
       });
       const q = icnSearch.trim().toLowerCase();
@@ -4592,7 +4598,7 @@ function App() {
       wsData.push(["ผู้ประเมิน (ICN)", r.assessorName || '-']);
       wsData.push(["วันที่ประเมิน", dateStr]);
       wsData.push(["จำนวนผู้รับการประเมิน", (r.numPeople || '-') + " คน/เหตุการณ์"]);
-      wsData.push(["ร้อยละเฉลี่ยรวม", (r.overallSummaryData?.grandSummary?.percentage || '0') + "%"]);
+      wsData.push(["ร้อยละเฉลี่ยรวม", fmtPct(r.overallSummaryData?.grandSummary?.percentage || '0') + "%"]);
       const secs = r.overallSummaryData?.aggSectionScores || [];
       const hasItems = secs.some(s => (s.items || []).length > 0);
       if (hasItems) {
@@ -4601,14 +4607,14 @@ function App() {
         secs.forEach(sec => {
           wsData.push([sec.title]);
           (sec.items || []).forEach(it => {
-            wsData.push([`${it.id}  ${it.text}`, it.done != null ? it.done : 0, it.notDone != null ? it.notDone : 0, (it.percent != null ? it.percent : 0) + "%"]);
+            wsData.push([`${it.id}  ${it.text}`, it.done != null ? it.done : 0, it.notDone != null ? it.notDone : 0, fmtPct(it.percent != null ? it.percent : 0) + "%"]);
           });
         });
         wsData.push([]);
         wsData.push(["สรุปคะแนนรายหมวด", "คะแนนเต็ม", "คะแนนที่ได้", "ร้อยละเฉลี่ย"]);
-        secs.forEach(sec => wsData.push([sec.title, sec.fullScore || 0, sec.earnedScore || 0, (sec.percentage || 0) + "%"]));
+        secs.forEach(sec => wsData.push([sec.title, sec.fullScore || 0, sec.earnedScore || 0, fmtPct(sec.percentage || 0) + "%"]));
         const g = r.overallSummaryData.grandSummary || {};
-        wsData.push(["รวมทั้งหมด", g.fullScore || 0, g.earnedScore || 0, (g.percentage || 0) + "%"]);
+        wsData.push(["รวมทั้งหมด", g.fullScore || 0, g.earnedScore || 0, fmtPct(g.percentage || 0) + "%"]);
       }
       if (r.commendation && String(r.commendation).trim() || r.suggestion && String(r.suggestion).trim()) {
         wsData.push([]);
@@ -4719,7 +4725,7 @@ function App() {
         className: "text-right"
       }, /*#__PURE__*/React.createElement("div", {
         className: `text-2xl font-black ${scoreColor.text}`
-      }, g.avg, "%"), /*#__PURE__*/React.createElement("div", {
+      }, fmtPct(g.avg), "%"), /*#__PURE__*/React.createElement("div", {
         className: "text-[10px] font-bold text-slate-400 uppercase tracking-wide"
       }, "เฉลี่ย")), /*#__PURE__*/React.createElement(ChevronDown, {
         className: `w-6 h-6 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`
@@ -4742,7 +4748,7 @@ function App() {
           className: "flex items-center gap-3 shrink-0 self-end sm:self-auto"
         }, /*#__PURE__*/React.createElement("span", {
           className: `text-xl font-black ${rc.text}`
-        }, r.overallSummaryData?.grandSummary?.percentage || '0', "%"), /*#__PURE__*/React.createElement("button", {
+        }, fmtPct(r.overallSummaryData?.grandSummary?.percentage || '0'), "%"), /*#__PURE__*/React.createElement("button", {
           onClick: () => handlePrintRecord(r),
           disabled: isGeneratingPDF,
           className: `text-white px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 font-bold shadow-md transition-colors ${isGeneratingPDF ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#f1a164] hover:bg-[#de8f55]'}`
@@ -4988,7 +4994,7 @@ function App() {
             bundleAveragesByType[type][bKey] = {
               earned: stats.earned,
               total: stats.total,
-              percent: stats.total > 0 ? (stats.earned / stats.total * 100).toFixed(0) : 0
+              percent: stats.total > 0 ? (stats.earned / stats.total * 100).toFixed(2) : 0
             };
           });
         }
@@ -5073,7 +5079,7 @@ function App() {
       });
       const toArr = m => Object.keys(m).map(k => ({
         label: k,
-        value: m[k].f > 0 ? (m[k].e / m[k].f * 100).toFixed(1) : 0,
+        value: m[k].f > 0 ? (m[k].e / m[k].f * 100).toFixed(2) : 0,
         count: m[k].count
       }));
       return {
@@ -5082,7 +5088,7 @@ function App() {
         byType: toArr(byTypeMap).sort((a, b) => parseFloat(b.value) - parseFloat(a.value)),
         byMonth: Object.keys(byMonthMap).map(Number).sort((a, b) => a - b).map(ym => ({
           label: byMonthMap[ym].label,
-          value: byMonthMap[ym].f > 0 ? (byMonthMap[ym].e / byMonthMap[ym].f * 100).toFixed(1) : 0,
+          value: byMonthMap[ym].f > 0 ? (byMonthMap[ym].e / byMonthMap[ym].f * 100).toFixed(2) : 0,
           count: byMonthMap[ym].count
         }))
       };
@@ -5100,7 +5106,7 @@ function App() {
         filteredRecords.slice().reverse().forEach(r => {
           const dateObj = new Date(r.id);
           const dateStr = isNaN(dateObj.getTime()) ? '-' : dateObj.toLocaleString('th-TH');
-          wsData.push([dateStr, r.assessmentType, r.deptType, r.department, r.assessorName, r.numPeople, `${r.overallSummaryData?.grandSummary?.percentage || '0'}%`]);
+          wsData.push([dateStr, r.assessmentType, r.deptType, r.department, r.assessorName, r.numPeople, `${fmtPct(r.overallSummaryData?.grandSummary?.percentage || '0')}%`]);
         });
       }
       return wsData;
@@ -5442,7 +5448,7 @@ function App() {
         className: "p-4 font-black text-center text-[#238885] print:text-black"
       }, r.numPeople || '-'), /*#__PURE__*/React.createElement("td", {
         className: "p-4 font-black text-[#16bba6] text-right text-xl print:text-black"
-      }, r.overallSummaryData?.grandSummary?.percentage || '0', "%"), /*#__PURE__*/React.createElement("td", {
+      }, fmtPct(r.overallSummaryData?.grandSummary?.percentage || '0'), "%"), /*#__PURE__*/React.createElement("td", {
         className: "p-4 text-center print:hidden"
       }, /*#__PURE__*/React.createElement("button", {
         onClick: () => handleDeleteRecord(r),
@@ -5489,12 +5495,12 @@ function App() {
       className: "flex items-baseline gap-2"
     }, /*#__PURE__*/React.createElement("span", {
       className: "text-6xl font-black text-[#238885] print:text-black"
-    }, summaryStats.overallAvg, "%")), /*#__PURE__*/React.createElement("div", {
+    }, fmtPct(summaryStats.overallAvg), "%")), /*#__PURE__*/React.createElement("div", {
       className: "w-full bg-white rounded-full h-3 mt-5 max-w-[180px] print:hidden"
     }, /*#__PURE__*/React.createElement("div", {
       className: "bg-[#238885] h-3 rounded-full",
       style: {
-        width: `${summaryStats.overallAvg}%`
+        width: `${fmtPct(summaryStats.overallAvg)}%`
       }
     })))), /*#__PURE__*/React.createElement("div", {
       className: "mb-10"
@@ -5569,7 +5575,7 @@ function App() {
         className: "block text-base font-bold text-[#c2651b] mt-2"
       }, "ร้อยละของส่วนที่เหลือ: ", 100 - (parseInt(aggBundles.OVERALL?.percent) || 0), "%")), /*#__PURE__*/React.createElement("span", {
         className: "text-6xl font-black text-[#238885]"
-      }, aggBundles.OVERALL?.percent || 0, "%")));
+      }, fmtPct(aggBundles.OVERALL?.percent || 0), "%")));
     }), summaryStats.deptTypeAveragesByType && Object.keys(summaryStats.deptTypeAveragesByType).map(type => /*#__PURE__*/React.createElement("div", {
       key: `deptType-${type}`,
       className: "bg-white rounded-3xl shadow-sm border-2 border-gray-200 overflow-hidden mt-10 print:border-gray-400"
