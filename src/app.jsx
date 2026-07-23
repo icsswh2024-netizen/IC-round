@@ -2826,8 +2826,16 @@
             });
          }, [hospitalRecords, filterYear, filterStartMonth, filterEndMonth, filterType, filterDeptType, filterDept, filterRole, filterAssessor]); 
 
+         // แหล่งข้อมูลของสรุปภาพรวม+กราฟ แยกตามแท็บ: 'summary' = ประเมินตนเอง (ไม่รวม ICN), 'summaryICN' = เฉพาะ ICN
+         const summarySource = useMemo(() => {
+            const isICN = (r) => String(r.assessorName || '').trim().toLowerCase() === 'icn';
+            if (historyTab === 'summaryICN') return filteredRecords.filter(isICN);
+            if (historyTab === 'summary') return filteredRecords.filter(r => !isICN(r));
+            return filteredRecords;
+         }, [filteredRecords, historyTab]);
+
          const summaryStats = useMemo(() => {
-            if (filteredRecords.length === 0) return null;
+            if (summarySource.length === 0) return null;
             let totalEarned = 0, totalFull = 0; let validRecordsCount = 0; let totalPeopleCount = 0;
             const typeStats = {};
             const deptTypeByTypeStats = {};
@@ -2843,7 +2851,7 @@
                });
             }
 
-            filteredRecords.forEach(r => {
+            summarySource.forEach(r => {
                let rEarned = 0, rFull = 0;
                if (r.overallSummaryData && r.overallSummaryData.aggSectionScores) {
                    r.overallSummaryData.aggSectionScores.forEach(sec => {
@@ -2942,7 +2950,7 @@
             });
 
             return { overallAvg, typeAverages, deptTypeAveragesByType, deptAveragesByType, bundleAveragesByType, totalRecords: validRecordsCount, totalPeople: totalPeopleCount };
-         }, [filteredRecords, dynamicChecklists]);
+         }, [summarySource, dynamicChecklists]);
 
          // --- ข้อมูลสำหรับกราฟภาพรวม: รวมทุกแบบประเมิน จำแนกตามประเภทหน่วยงาน/หน่วยงาน/แบบประเมิน/รายเดือน ---
          const chartData = useMemo(() => {
@@ -2957,7 +2965,7 @@
             const byDeptTypeMap = {}, byDeptMap = {}, byTypeMap = {}, byMonthMap = {};
             const thM = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
             const add = (m, k) => { if (!m[k]) m[k] = { e: 0, f: 0, count: 0 }; return m[k]; };
-            filteredRecords.forEach(r => {
+            summarySource.forEach(r => {
                const { e, f } = recEF(r);
                if (f <= 0) return;
                const o1 = add(byDeptTypeMap, r.deptType || 'ไม่ระบุ'); o1.e += e; o1.f += f; o1.count++;
@@ -2977,7 +2985,7 @@
                byType: toArr(byTypeMap).sort((a, b) => parseFloat(b.value) - parseFloat(a.value)),
                byMonth: Object.keys(byMonthMap).map(Number).sort((a, b) => a - b).map(ym => ({ label: byMonthMap[ym].label, value: byMonthMap[ym].f > 0 ? ((byMonthMap[ym].e / byMonthMap[ym].f) * 100).toFixed(1) : 0, count: byMonthMap[ym].count }))
             };
-         }, [filteredRecords]);
+         }, [summarySource]);
 
          const getHistoryExcelData = () => {
              const wsData = [];
@@ -3097,7 +3105,8 @@
                     {/* เมนูย่อยในหน้าประวัติ: รายการบันทึก / สรุปภาพรวม + กราฟ (คลิกเข้าไปดู เพื่อไม่ให้หน้ายาว) */}
                     <div className="flex flex-wrap gap-2 mb-6 print:hidden">
                        <button onClick={() => setHistoryTab('records')} className={`px-6 py-3 rounded-xl font-bold text-base flex items-center gap-2 transition-all ${historyTab === 'records' ? 'bg-[#285c6c] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><Clock className="w-5 h-5" /> รายการบันทึก <span className={`text-xs px-2 py-0.5 rounded-full ${historyTab === 'records' ? 'bg-white/20' : 'bg-slate-200'}`}>{filteredRecords.length}</span></button>
-                       <button onClick={() => setHistoryTab('summary')} className={`px-6 py-3 rounded-xl font-bold text-base flex items-center gap-2 transition-all ${historyTab === 'summary' ? 'bg-[#285c6c] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><PieChart className="w-5 h-5" /> สรุปภาพรวม + กราฟ</button>
+                       <button onClick={() => setHistoryTab('summary')} className={`px-6 py-3 rounded-xl font-bold text-base flex items-center gap-2 transition-all ${historyTab === 'summary' ? 'bg-[#285c6c] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><PieChart className="w-5 h-5" /> สรุปภาพรวม (ประเมินตนเอง)</button>
+                       <button onClick={() => setHistoryTab('summaryICN')} className={`px-6 py-3 rounded-xl font-bold text-base flex items-center gap-2 transition-all ${historyTab === 'summaryICN' ? 'bg-[#285c6c] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><Building2 className="w-5 h-5" /> สรุปภาพรวม ICN</button>
                     </div>
 
                     <div className="hidden print:block mb-6 text-base text-gray-600 font-bold">ข้อมูลอัปเดต ณ วันที่ {new Date().toLocaleString('th-TH')} น.</div>
@@ -3134,14 +3143,14 @@
                     </div>
                     )}
 
-                    {historyTab === 'summary' && (!summaryStats || summaryStats.totalRecords === 0) && (
-                       <div className="text-center py-16 text-slate-400 font-medium text-lg">ยังไม่มีข้อมูลสำหรับสรุปภาพรวม (ปรับตัวกรอง หรือดึงข้อมูลจาก Cloud)</div>
+                    {(historyTab === 'summary' || historyTab === 'summaryICN') && (!summaryStats || summaryStats.totalRecords === 0) && (
+                       <div className="text-center py-16 text-slate-400 font-medium text-lg">ยังไม่มีข้อมูลสำหรับ{historyTab === 'summaryICN' ? 'สรุปภาพรวม ICN' : 'สรุปภาพรวม (ประเมินตนเอง)'} (ปรับตัวกรอง หรือดึงข้อมูลจาก Cloud)</div>
                     )}
 
-                    {historyTab === 'summary' && summaryStats && summaryStats.totalRecords > 0 && (
+                    {(historyTab === 'summary' || historyTab === 'summaryICN') && summaryStats && summaryStats.totalRecords > 0 && (
                         <div className="mt-2 pdf-no-break break-inside-avoid">
                             <div className="bg-[#314566] text-white px-8 py-5 rounded-3xl shadow-md mb-8 flex items-center gap-4 print:bg-transparent print:text-black print:border-none print:px-0 print:py-0 print:shadow-none">
-                                <PieChart className="w-9 h-9 text-[#16bba6] print:hidden"/> <h3 className="text-2xl font-black m-0">สรุปภาพรวมโรงพยาบาล (อ้างอิงจากข้อมูลที่กรอง)</h3>
+                                <PieChart className="w-9 h-9 text-[#16bba6] print:hidden"/> <h3 className="text-2xl font-black m-0">สรุปภาพรวมโรงพยาบาล — {historyTab === 'summaryICN' ? 'การนิเทศโดย ICN' : 'การประเมินตนเอง'} <span className="text-base font-bold text-white/70">(อ้างอิงจากข้อมูลที่กรอง)</span></h3>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
                                 <div className="bg-white rounded-3xl p-8 border-2 border-gray-200 flex flex-col items-center justify-center shadow-sm">
