@@ -290,24 +290,51 @@
       </div>
     );
 
-    // แท่งแนวตั้ง (ค่า 0–100%)
+    // แท่งแนวตั้ง (ค่า 0–100%) พร้อมแกน Y และเส้นกริดแนวนอน
     const VBarChart = ({ data }) => {
       if (!data || data.length === 0) return <div className="text-slate-400 text-center py-10 font-medium">ยังไม่มีข้อมูล</div>;
       const H = 190;
+      const ticks = [100, 75, 50, 25, 0];
+      const colMinW = 64;
       return (
         <div className="w-full overflow-x-auto">
-          <div className="flex items-end justify-around gap-3" style={{ minWidth: Math.max(data.length * 82, 220) }}>
-            {data.map((d, i) => {
-              const v = parseFloat(d.value) || 0;
-              return (
-                <div key={i} className="flex flex-col items-center justify-end flex-1" style={{ minWidth: 62 }}>
-                  <div className="text-sm font-black mb-1" style={{ color: scoreHex(v) }}>{v.toFixed(1)}%</div>
-                  <div style={{ height: Math.max((v / 100) * H, 2), width: '68%', maxWidth: 54, background: scoreHex(v), borderRadius: '8px 8px 0 0', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></div>
-                  <div className="text-xs font-bold text-slate-600 mt-2 text-center leading-tight" style={{ maxWidth: 100 }}>{d.label}</div>
-                  {d.count != null ? <div className="text-[10px] text-slate-400 font-medium mt-1 text-center leading-tight" style={{ maxWidth: 100 }}>{d.count} ครั้ง{d.people != null ? ` · ${d.people} คน/เหตุฯ` : ''}</div> : null}
+          <div className="flex pt-5" style={{ minWidth: Math.max(data.length * colMinW + 40, 280) }}>
+            {/* แกน Y (สเกลร้อยละ) */}
+            <div className="relative shrink-0" style={{ width: 30, height: H }}>
+              {ticks.map(t => (
+                <div key={t} className="absolute right-1 -translate-y-1/2 text-[10px] text-slate-400 font-medium" style={{ top: H - (t / 100) * H }}>{t}</div>
+              ))}
+            </div>
+            {/* พื้นที่กราฟ */}
+            <div className="flex-1">
+              <div className="relative" style={{ height: H }}>
+                {/* เส้นกริดแนวนอน (เส้นล่างสุด = แกน X) */}
+                {ticks.map(t => (
+                  <div key={t} className={t === 0 ? 'absolute inset-x-0 border-t-2 border-gray-300' : 'absolute inset-x-0 border-t border-gray-200'} style={{ top: H - (t / 100) * H }}></div>
+                ))}
+                {/* แท่ง */}
+                <div className="absolute inset-0 flex items-end justify-around gap-3">
+                  {data.map((d, i) => {
+                    const v = parseFloat(d.value) || 0;
+                    return (
+                      <div key={i} className="flex flex-col items-center justify-end flex-1" style={{ minWidth: colMinW, height: H }}>
+                        <div className="text-xs sm:text-sm font-black mb-0.5 whitespace-nowrap" style={{ color: scoreHex(v) }}>{v.toFixed(1)}%</div>
+                        <div style={{ height: Math.max((v / 100) * H, 2), width: '64%', maxWidth: 50, background: scoreHex(v), borderRadius: '6px 6px 0 0', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}></div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </div>
+              {/* ป้ายแกน X */}
+              <div className="flex justify-around gap-3">
+                {data.map((d, i) => (
+                  <div key={i} className="flex flex-col items-center flex-1" style={{ minWidth: colMinW }}>
+                    <div className="text-xs font-bold text-slate-600 mt-2 text-center leading-tight" style={{ maxWidth: 100 }}>{d.label}</div>
+                    {d.count != null ? <div className="text-[10px] text-slate-400 font-medium mt-1 text-center leading-tight" style={{ maxWidth: 100 }}>{d.count} ครั้ง{d.people != null ? ` · ${d.people} คน/เหตุฯ` : ''}</div> : null}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       );
