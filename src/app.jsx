@@ -3195,7 +3195,7 @@
                                 <div className="p-0 overflow-x-auto">
                                     <table className="w-full text-left border-collapse min-w-[600px]">
                                         <thead>
-                                            <tr className="text-slate-600 text-base border-b-2 border-gray-200 bg-gray-50 print:bg-white print:text-black print:border-b-gray-300"><th className="py-5 px-8 font-bold">ประเภทแบบประเมิน</th><th className="py-5 px-8 font-bold text-center">ประเมิน (ครั้ง)</th><th className="py-5 px-8 font-bold text-center">ผู้รับประเมิน (คน/เหตุการณ์)</th><th className="py-5 px-8 font-bold w-[45%]">ค่าเฉลี่ย และ แผนภูมิ (ร้อยละ)</th></tr>
+                                            <tr className="text-slate-600 text-base border-b-2 border-gray-200 bg-gray-50 print:bg-white print:text-black print:border-b-gray-300"><th className="py-5 px-8 font-bold">ประเภทแบบประเมิน</th><th className="py-5 px-8 font-bold text-center">ประเมิน (ครั้ง)</th><th className="py-5 px-8 font-bold text-center">ผู้รับประเมิน (คน/เหตุการณ์)</th><th className="py-5 px-8 font-bold">ค่าเฉลี่ย (ร้อยละ)</th></tr>
                                         </thead>
                                         <tbody>
                                             {summaryStats.typeAverages.map(stat => {
@@ -3203,7 +3203,7 @@
                                                 return (
                                                 <tr key={stat.type} className={`border-b border-gray-100 last:border-0 print:border-gray-200 ${scoreColor.rowBg}`}>
                                                     <td className="py-6 px-8 font-black text-[#32355c] text-xl">{stat.type}</td><td className="py-6 px-8 text-center font-bold text-slate-600 text-lg">{stat.count}</td><td className="py-6 px-8 text-center font-bold text-[#238885] text-lg">{stat.peopleCount}</td>
-                                                    <td className="py-6 px-8"><div className="flex items-center gap-5"><div className="w-full bg-gray-200 rounded-full h-3.5 max-w-[250px] shadow-inner print:hidden"><div className={`h-3.5 rounded-full ${scoreColor.bar}`} style={{width: `${stat.avg}%`}}></div></div><span className={`font-black text-2xl min-w-[80px] text-right ${scoreColor.text}`}>{stat.avg}%</span></div></td>
+                                                    <td className="py-6 px-8"><span className={`font-black text-2xl ${scoreColor.text}`}>{stat.avg}%</span></td>
                                                 </tr>
                                             )})}
                                         </tbody>
@@ -3242,7 +3242,7 @@
                                 <div className="p-0 overflow-x-auto">
                                     <table className="w-full text-left border-collapse min-w-[600px]">
                                         <thead>
-                                            <tr className="text-slate-600 text-base border-b-2 border-gray-200 bg-gray-50 print:bg-white print:text-black print:border-b-gray-300"><th className="py-4 px-8 font-bold">ประเภทหน่วยงาน</th><th className="py-4 px-8 font-bold text-center">ประเมิน (ครั้ง)</th><th className="py-4 px-8 font-bold text-center">ผู้รับประเมิน (คน/เหตุการณ์)</th><th className="py-4 px-8 font-bold w-[45%]">ค่าเฉลี่ย และ แผนภูมิ (ร้อยละ)</th></tr>
+                                            <tr className="text-slate-600 text-base border-b-2 border-gray-200 bg-gray-50 print:bg-white print:text-black print:border-b-gray-300"><th className="py-4 px-8 font-bold">ประเภทหน่วยงาน</th><th className="py-4 px-8 font-bold text-center">ประเมิน (ครั้ง)</th><th className="py-4 px-8 font-bold text-center">ผู้รับประเมิน (คน/เหตุการณ์)</th><th className="py-4 px-8 font-bold">ค่าเฉลี่ย (ร้อยละ)</th></tr>
                                         </thead>
                                         <tbody>
                                             {summaryStats.deptTypeAveragesByType[type].map(stat => {
@@ -3250,7 +3250,7 @@
                                                 return (
                                                 <tr key={stat.deptType} className={`border-b border-gray-100 last:border-0 print:border-gray-200 ${scoreColor.rowBg}`}>
                                                     <td className="py-6 px-8 font-black text-slate-800 text-xl">{stat.deptType}</td><td className="py-6 px-8 text-center font-bold text-slate-600 text-lg">{stat.count}</td><td className="py-6 px-8 text-center font-bold text-[#238885] text-lg">{stat.peopleCount}</td>
-                                                    <td className="py-6 px-8"><div className="flex items-center gap-5"><div className="w-full bg-gray-200 rounded-full h-3.5 max-w-[250px] shadow-inner print:hidden"><div className={`h-3.5 rounded-full ${scoreColor.bar}`} style={{width: `${stat.avg}%`}}></div></div><span className={`font-black text-2xl min-w-[80px] text-right ${scoreColor.text}`}>{stat.avg}%</span></div></td>
+                                                    <td className="py-6 px-8"><span className={`font-black text-2xl ${scoreColor.text}`}>{stat.avg}%</span></td>
                                                 </tr>
                                             )})}
                                         </tbody>
@@ -3268,7 +3268,7 @@
                                 <div className="p-0 overflow-x-auto">
                                     <table className="w-full text-left border-collapse min-w-[600px]">
                                         <thead>
-                                            <tr className="text-slate-600 text-base border-b-2 border-gray-200 bg-gray-50 print:bg-white print:text-black print:border-b-gray-300"><th className="py-4 px-8 font-bold">ประเภท</th><th className="py-4 px-8 font-bold">หน่วยงาน</th><th className="py-4 px-8 font-bold text-center">ประเมิน (ครั้ง)</th><th className="py-4 px-8 font-bold text-center">ผู้รับประเมิน (คน/เหตุการณ์)</th><th className="py-4 px-8 font-bold w-[40%]">ค่าเฉลี่ย และ แผนภูมิ (ร้อยละ)</th></tr>
+                                            <tr className="text-slate-600 text-base border-b-2 border-gray-200 bg-gray-50 print:bg-white print:text-black print:border-b-gray-300"><th className="py-4 px-8 font-bold">ประเภท</th><th className="py-4 px-8 font-bold">หน่วยงาน</th><th className="py-4 px-8 font-bold text-center">ประเมิน (ครั้ง)</th><th className="py-4 px-8 font-bold text-center">ผู้รับประเมิน (คน/เหตุการณ์)</th><th className="py-4 px-8 font-bold">ค่าเฉลี่ย (ร้อยละ)</th></tr>
                                         </thead>
                                         <tbody>
                                             {summaryStats.deptAveragesByType[type].map(stat => {
@@ -3276,7 +3276,7 @@
                                                 return (
                                                 <tr key={`${stat.deptType}_${stat.department}`} className={`border-b-2 border-gray-50 last:border-0 print:border-gray-200 ${scoreColor.rowBg}`}>
                                                     <td className="py-6 px-8 font-bold text-slate-500 text-base">{stat.deptType}</td><td className="py-6 px-8 font-black text-slate-800 text-xl">{stat.department}</td><td className="py-6 px-8 text-center font-bold text-slate-600 text-lg">{stat.count}</td><td className="py-6 px-8 text-center font-bold text-[#238885] text-lg">{stat.peopleCount}</td>
-                                                    <td className="py-6 px-8"><div className="flex items-center gap-5"><div className="w-full bg-gray-200 rounded-full h-3.5 max-w-[250px] shadow-inner print:hidden"><div className={`h-3.5 rounded-full ${scoreColor.bar}`} style={{width: `${stat.avg}%`}}></div></div><span className={`font-black text-2xl min-w-[80px] text-right ${scoreColor.text}`}>{stat.avg}%</span></div></td>
+                                                    <td className="py-6 px-8"><span className={`font-black text-2xl ${scoreColor.text}`}>{stat.avg}%</span></td>
                                                 </tr>
                                             )})}
                                         </tbody>
