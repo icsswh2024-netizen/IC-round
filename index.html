@@ -5494,6 +5494,14 @@ function App() {
     }, /*#__PURE__*/React.createElement(Activity, {
       className: "w-7 h-7 text-[#285c6c] print:hidden"
     }), " คะแนนเฉลี่ยแยกตามประเภทแบบประเมิน"), /*#__PURE__*/React.createElement("div", {
+      className: "p-6 border-b border-gray-100"
+    }, /*#__PURE__*/React.createElement(VBarChart, {
+      data: summaryStats.typeAverages.map(s => ({
+        label: s.type,
+        value: s.avg,
+        count: s.count
+      }))
+    }), /*#__PURE__*/React.createElement(ChartLegend, null)), /*#__PURE__*/React.createElement("div", {
       className: "p-0 overflow-x-auto"
     }, /*#__PURE__*/React.createElement("table", {
       className: "w-full text-left border-collapse min-w-[600px]"
@@ -5574,6 +5582,14 @@ function App() {
     }, /*#__PURE__*/React.createElement(Building2, {
       className: "w-7 h-7 text-[#285c6c] print:hidden"
     }), " คะแนนเฉลี่ยแยกตามประเภทหน่วยงาน - ", type), /*#__PURE__*/React.createElement("div", {
+      className: "p-6 border-b border-gray-100"
+    }, /*#__PURE__*/React.createElement(VBarChart, {
+      data: summaryStats.deptTypeAveragesByType[type].map(s => ({
+        label: s.deptType,
+        value: s.avg,
+        count: s.count
+      }))
+    })), /*#__PURE__*/React.createElement("div", {
       className: "p-0 overflow-x-auto"
     }, /*#__PURE__*/React.createElement("table", {
       className: "w-full text-left border-collapse min-w-[600px]"
@@ -5620,6 +5636,14 @@ function App() {
     }, /*#__PURE__*/React.createElement(Building2, {
       className: "w-7 h-7 text-[#285c6c] print:hidden"
     }), " คะแนนเฉลี่ยแยกตามหน่วยงาน - ", type), /*#__PURE__*/React.createElement("div", {
+      className: "p-6 border-b border-gray-100"
+    }, /*#__PURE__*/React.createElement(VBarChart, {
+      data: summaryStats.deptAveragesByType[type].map(s => ({
+        label: s.department,
+        value: s.avg,
+        count: s.count
+      }))
+    })), /*#__PURE__*/React.createElement("div", {
       className: "p-0 overflow-x-auto"
     }, /*#__PURE__*/React.createElement("table", {
       className: "w-full text-left border-collapse min-w-[600px]"
