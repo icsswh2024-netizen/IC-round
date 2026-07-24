@@ -7,6 +7,7 @@
     // --- SVG Icons Components ---
     const IconProps = { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" };
     const Activity = ({className}) => <svg className={className} {...IconProps}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;
+    const Edit = ({className}) => <svg className={className} {...IconProps}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>;
     const Building2 = ({className}) => <svg className={className} {...IconProps}><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>;
     const User = ({className}) => <svg className={className} {...IconProps}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
     const Users = ({className}) => <svg className={className} {...IconProps}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
@@ -1285,6 +1286,50 @@
             showPopup({ title: 'ลบสำเร็จ', message: 'ลบข้อมูลรายการนี้ออกจากระบบเรียบร้อยแล้ว', type: 'info' });
           }
         });
+      };
+
+      // --- แอดมินแก้ไขข้อมูลทั่วไปของรายการประเมิน (บันทึกกลับ Google Sheet) ---
+      const [editRecord, setEditRecord] = useState(null);
+      const [editForm, setEditForm] = useState(null);
+      const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+      const openEditRecord = (r) => {
+        setEditRecord(r);
+        setEditForm({
+          assessmentType: r.assessmentType || '',
+          deptType: r.deptType || '',
+          department: r.department || '',
+          evaluateeRole: r.evaluateeRole || '',
+          assessorName: r.assessorName || '',
+          numPeople: r.numPeople || 1,
+          commendation: r.commendation || '',
+          suggestion: r.suggestion || '',
+        });
+      };
+      const closeEditRecord = () => { if (isSavingEdit) return; setEditRecord(null); setEditForm(null); };
+
+      const handleUpdateRecord = async () => {
+        if (!editRecord || !editForm) return;
+        if (!String(editForm.department).trim()) { showPopup({ title: 'ข้อมูลไม่ครบ', message: 'กรุณาระบุหน่วยงาน', type: 'error' }); return; }
+        setIsSavingEdit(true);
+        const updated = { ...editRecord, ...editForm, numPeople: parseInt(editForm.numPeople) || editRecord.numPeople };
+        if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
+          try {
+            const payload = {
+              action: 'update', id: editRecord.id, timestampStr: editRecord.timestampStr,
+              assessmentType: updated.assessmentType, assessorName: updated.assessorName,
+              deptType: updated.deptType, department: updated.department, evaluateeRole: updated.evaluateeRole,
+              numPeople: updated.numPeople, commendation: updated.commendation, suggestion: updated.suggestion,
+              fullDataJSON: JSON.stringify(updated)
+            };
+            await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+            await new Promise(res => setTimeout(res, 1500));
+          } catch (e) { console.error("Error updating record:", e); }
+        }
+        setHospitalRecords(prev => prev.map(rec => rec.id === editRecord.id ? updated : rec));
+        setIsSavingEdit(false);
+        setEditRecord(null); setEditForm(null);
+        showPopup({ title: 'บันทึกสำเร็จ', message: 'แก้ไขข้อมูลรายการนี้เรียบร้อยแล้ว (อัปเดตในระบบและ Google Sheet)', type: 'info' });
       };
 
       const handleDeleteAllRecords = () => {
@@ -3254,7 +3299,7 @@
                                       <td className="p-4 font-medium text-slate-700 print:text-black">{r.assessorName || '-'}</td>
                                       <td className="p-4 font-black text-center text-[#238885] print:text-black">{r.numPeople || '-'}</td>
                                       <td className="p-4 font-black text-[#16bba6] text-right text-xl print:text-black">{fmtPct(r.overallSummaryData?.grandSummary?.percentage || '0')}%</td>
-                                      <td className="p-4 text-center print:hidden"><button onClick={() => handleDeleteRecord(r)} className="text-rose-500 hover:bg-rose-100 p-2.5 rounded-xl transition-colors" title="ลบข้อมูลนี้"><Trash2 className="w-5 h-5 inline" /></button></td>
+                                      <td className="p-4 text-center print:hidden"><div className="flex items-center justify-center gap-1"><button onClick={() => openEditRecord(r)} className="text-[#238885] hover:bg-[#16bba6]/10 p-2.5 rounded-xl transition-colors" title="แก้ไขข้อมูลนี้"><Edit className="w-5 h-5 inline" /></button><button onClick={() => handleDeleteRecord(r)} className="text-rose-500 hover:bg-rose-100 p-2.5 rounded-xl transition-colors" title="ลบข้อมูลนี้"><Trash2 className="w-5 h-5 inline" /></button></div></td>
                                    </tr>
                                 )})
                              )}
@@ -3392,6 +3437,62 @@
                  <div className="flex-1 w-full max-w-5xl mx-auto bg-slate-800 rounded-b-2xl p-0 flex justify-center shadow-inner overflow-y-auto">
                     <div id="pdf-preview-content" className="w-full" style={{ fontFamily: "'Sarabun', sans-serif" }}>
                         <div dangerouslySetInnerHTML={{ __html: pdfPreviewState.htmlContent }} />
+                    </div>
+                 </div>
+              </div>
+           )}
+
+           {/* Modal แก้ไขข้อมูลการประเมิน (แอดมิน) */}
+           {editRecord && editForm && (
+              <div className="fixed inset-0 z-[10001] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 print:hidden" onClick={closeEditRecord}>
+                 <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-[#285c6c] text-white px-6 py-5 flex items-center gap-3 font-bold text-xl shrink-0"><Edit className="w-6 h-6" /> แก้ไขข้อมูลการประเมิน</div>
+                    <div className="p-6 overflow-y-auto">
+                       <div className="text-sm text-slate-500 font-medium mb-4 bg-slate-50 rounded-xl px-4 py-3 border border-gray-200">บันทึกเมื่อ: {editRecord.timestampStr || new Date(editRecord.id).toLocaleString('th-TH')} · ร้อยละเฉลี่ย: <b className="text-[#238885]">{fmtPct(editRecord.overallSummaryData?.grandSummary?.percentage || 0)}%</b> <span className="text-slate-400">(คะแนน/ผลรายข้อไม่ถูกแก้ในหน้านี้)</span></div>
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                             <label className="block text-sm font-bold text-[#285c6c] mb-2">แบบประเมิน</label>
+                             <select value={editForm.assessmentType} onChange={(e) => setEditForm(f => ({ ...f, assessmentType: e.target.value }))} className="w-full p-3 border-2 border-gray-200 rounded-xl text-base font-bold text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-gray-50">
+                                {editForm.assessmentType && !(dynamicChecklists && dynamicChecklists[editForm.assessmentType]) && <option value={editForm.assessmentType}>{editForm.assessmentType}</option>}
+                                {dynamicChecklists && Object.keys(dynamicChecklists).map(k => <option key={k} value={k}>{k}</option>)}
+                             </select>
+                          </div>
+                          <div>
+                             <label className="block text-sm font-bold text-[#285c6c] mb-2">ประเภทหน่วยงาน</label>
+                             <select value={editForm.deptType} onChange={(e) => setEditForm(f => ({ ...f, deptType: e.target.value }))} className="w-full p-3 border-2 border-gray-200 rounded-xl text-base font-bold text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-gray-50">
+                                {editForm.deptType && !['IPD', 'OPD', 'กลุ่มงานให้บริการผู้ป่วย'].includes(editForm.deptType) && <option value={editForm.deptType}>{editForm.deptType}</option>}
+                                <option value="IPD">IPD</option><option value="OPD">OPD</option><option value="กลุ่มงานให้บริการผู้ป่วย">กลุ่มงานให้บริการผู้ป่วย</option>
+                             </select>
+                          </div>
+                          <div>
+                             <label className="block text-sm font-bold text-[#285c6c] mb-2">หน่วยงานที่รับการประเมิน <span className="text-rose-500">*</span></label>
+                             <input type="text" value={editForm.department} onChange={(e) => setEditForm(f => ({ ...f, department: e.target.value }))} className="w-full p-3 border-2 border-gray-200 rounded-xl text-base font-bold text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-gray-50" />
+                          </div>
+                          <div>
+                             <label className="block text-sm font-bold text-[#285c6c] mb-2">ตำแหน่งผู้รับการประเมิน</label>
+                             <input type="text" value={editForm.evaluateeRole} onChange={(e) => setEditForm(f => ({ ...f, evaluateeRole: e.target.value }))} className="w-full p-3 border-2 border-gray-200 rounded-xl text-base font-bold text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-gray-50" />
+                          </div>
+                          <div>
+                             <label className="block text-sm font-bold text-[#285c6c] mb-2">ผู้ประเมิน</label>
+                             <input type="text" value={editForm.assessorName} onChange={(e) => setEditForm(f => ({ ...f, assessorName: e.target.value }))} className="w-full p-3 border-2 border-gray-200 rounded-xl text-base font-bold text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-gray-50" />
+                          </div>
+                          <div>
+                             <label className="block text-sm font-bold text-[#285c6c] mb-2">จำนวน (คน/เหตุการณ์)</label>
+                             <input type="number" min="1" value={editForm.numPeople} onChange={(e) => setEditForm(f => ({ ...f, numPeople: e.target.value }))} className="w-full p-3 border-2 border-gray-200 rounded-xl text-base font-bold text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-gray-50" />
+                          </div>
+                          <div className="sm:col-span-2">
+                             <label className="block text-sm font-bold text-[#285c6c] mb-2">ข้อชื่นชม</label>
+                             <textarea value={editForm.commendation} onChange={(e) => setEditForm(f => ({ ...f, commendation: e.target.value }))} rows="2" className="w-full p-3 border-2 border-gray-200 rounded-xl text-base text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-gray-50 resize-y" />
+                          </div>
+                          <div className="sm:col-span-2">
+                             <label className="block text-sm font-bold text-[#285c6c] mb-2">ข้อเสนอแนะ</label>
+                             <textarea value={editForm.suggestion} onChange={(e) => setEditForm(f => ({ ...f, suggestion: e.target.value }))} rows="2" className="w-full p-3 border-2 border-gray-200 rounded-xl text-base text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-gray-50 resize-y" />
+                          </div>
+                       </div>
+                    </div>
+                    <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
+                       <button onClick={closeEditRecord} disabled={isSavingEdit} className="px-5 py-2.5 rounded-xl font-bold text-slate-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50">ยกเลิก</button>
+                       <button onClick={handleUpdateRecord} disabled={isSavingEdit} className="px-6 py-2.5 rounded-xl font-bold text-white bg-[#238885] hover:bg-[#16bba6] transition-colors shadow-md flex items-center gap-2 disabled:opacity-50">{isSavingEdit ? <Loader2 className="w-5 h-5 animate-spin" /> : <Edit className="w-5 h-5" />}{isSavingEdit ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}</button>
                     </div>
                  </div>
               </div>
