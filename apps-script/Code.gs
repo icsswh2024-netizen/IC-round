@@ -166,6 +166,20 @@ function doPost(e) {
           sheet.getRange(uRow, ci + 1).setValue(data.commendation || "");
           var si = uHdrs.indexOf('ข้อเสนอแนะ'); if (si === -1) { uHdrs.push('ข้อเสนอแนะ'); si = uHdrs.length - 1; sheet.getRange(1, si + 1).setValue('ข้อเสนอแนะ').setFontWeight("bold").setBackground("#bbf7d0"); }
           sheet.getRange(uRow, si + 1).setValue(data.suggestion || "");
+          // [เพิ่มใหม่] อัปเดตคะแนนรวม/ร้อยละ เมื่อแอดมินแก้ผลรายข้อ
+          var cFull = uCol('คะแนนเต็ม'), cEarned = uCol('คะแนนที่ได้'), cPct = uCol('ร้อยละ');
+          if (cFull > -1 && data.totalFullScore !== undefined && data.totalFullScore !== null) sheet.getRange(uRow, cFull + 1).setValue(data.totalFullScore);
+          if (cEarned > -1 && data.totalEarnedScore !== undefined && data.totalEarnedScore !== null) sheet.getRange(uRow, cEarned + 1).setValue(data.totalEarnedScore);
+          if (cPct > -1 && data.percentage !== undefined && data.percentage !== null) sheet.getRange(uRow, cPct + 1).setValue(data.percentage);
+          // [เพิ่มใหม่] อัปเดตคอลัมน์ "ข้อ X" ตามผลรายข้อที่แก้ไข (หา-หรือ-สร้าง)
+          if (data.itemCells) {
+            var iHdrs = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+            for (var qk in data.itemCells) {
+              var qi = iHdrs.indexOf(qk);
+              if (qi === -1) { iHdrs.push(qk); qi = iHdrs.length - 1; sheet.getRange(1, qi + 1).setValue(qk).setFontWeight("bold").setBackground("#fef08a"); }
+              sheet.getRange(uRow, qi + 1).setValue(data.itemCells[qk]);
+            }
+          }
           if (uJson > -1 && data.fullDataJSON) sheet.getRange(uRow, uJson + 1).setValue(data.fullDataJSON);
           return ContentService.createTextOutput(JSON.stringify({"status": "success"})).setMimeType(ContentService.MimeType.JSON);
         }
