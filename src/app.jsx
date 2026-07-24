@@ -1288,38 +1288,97 @@
         });
       };
 
-      // --- แอดมินแก้ไขข้อมูลทั่วไปของรายการประเมิน (บันทึกกลับ Google Sheet) ---
+      // --- แอดมินแก้ไขข้อมูลทั่วไป + คะแนน/ผลรายข้อ ของรายการประเมิน (บันทึกกลับ Google Sheet) ---
       const [editRecord, setEditRecord] = useState(null);
       const [editForm, setEditForm] = useState(null);
       const [isSavingEdit, setIsSavingEdit] = useState(false);
+      const [showItemEditor, setShowItemEditor] = useState(false);
 
       const openEditRecord = (r) => {
+        const secs = (r.overallSummaryData?.aggSectionScores || []).map(sec => ({
+          id: sec.id, title: sec.title,
+          items: (sec.items || []).map(it => ({ id: it.id, text: it.text, done: parseInt(it.done) || 0, notDone: parseInt(it.notDone) || 0, na: parseInt(it.na) || 0 }))
+        }));
+        setShowItemEditor(false);
         setEditRecord(r);
         setEditForm({
-          assessmentType: r.assessmentType || '',
-          deptType: r.deptType || '',
-          department: r.department || '',
-          evaluateeRole: r.evaluateeRole || '',
-          assessorName: r.assessorName || '',
-          numPeople: r.numPeople || 1,
-          commendation: r.commendation || '',
-          suggestion: r.suggestion || '',
+          assessmentType: r.assessmentType || '', deptType: r.deptType || '', department: r.department || '',
+          evaluateeRole: r.evaluateeRole || '', assessorName: r.assessorName || '', numPeople: r.numPeople || 1,
+          commendation: r.commendation || '', suggestion: r.suggestion || '', sections: secs,
         });
       };
       const closeEditRecord = () => { if (isSavingEdit) return; setEditRecord(null); setEditForm(null); };
+
+      const setItemVal = (secIdx, itIdx, key, val) => {
+        setEditForm(f => {
+          const sections = f.sections.map(s => ({ ...s, items: s.items.map(i => ({ ...i })) }));
+          sections[secIdx].items[itIdx][key] = Math.max(0, parseInt(val) || 0);
+          return { ...f, sections };
+        });
+      };
+      // ตั้งค่าแบบเลือกเดียว (ใช้เมื่อจำนวนผู้รับประเมิน = 1): ปฏิบัติ/ไม่ปฏิบัติ/NA
+      const setItemChoice = (secIdx, itIdx, choice) => {
+        setEditForm(f => {
+          const sections = f.sections.map(s => ({ ...s, items: s.items.map(i => ({ ...i })) }));
+          const it = sections[secIdx].items[itIdx];
+          it.done = choice === 'DONE' ? 1 : 0; it.notDone = choice === 'NOT_DONE' ? 1 : 0; it.na = choice === 'NA' ? 1 : 0;
+          return { ...f, sections };
+        });
+      };
+
+      // คำนวณสรุปคะแนนใหม่จากผลรายข้อที่แก้ไข (NA ไม่นับในตัวหาร)
+      const recomputeSummary = (sections, assessmentType) => {
+        let gFull = 0, gEarned = 0, gDone = 0, gNotDone = 0, gNa = 0;
+        const aggSectionScores = sections.map(sec => {
+          let sFull = 0, sEarned = 0;
+          const items = sec.items.map(it => {
+            const done = parseInt(it.done) || 0, notDone = parseInt(it.notDone) || 0, na = parseInt(it.na) || 0;
+            const total = done + notDone;
+            sFull += total; sEarned += done; gDone += done; gNotDone += notDone; gNa += na;
+            return { id: it.id, text: it.text, earned: done, total, done, notDone, na, percent: total > 0 ? ((done / total) * 100).toFixed(0) : 0 };
+          });
+          gFull += sFull; gEarned += sEarned;
+          return { id: sec.id, title: sec.title, fullScore: sFull, earnedScore: sEarned, percentage: sFull > 0 ? ((sEarned / sFull) * 100).toFixed(2) : 0, items };
+        });
+        const grandSummary = { fullScore: gFull, earnedScore: gEarned, percentage: gFull > 0 ? ((gEarned / gFull) * 100).toFixed(2) : 0, done: gDone, notDone: gNotDone, na: gNa };
+        const { mapping, keys } = getBundleMappingForType(assessmentType);
+        const aggBundleScores = {};
+        keys.forEach(key => {
+          let bE = 0, bT = 0;
+          mapping[key].items.forEach(itemId => aggSectionScores.forEach(sec => { const it = sec.items.find(i => String(i.id) === String(itemId).trim()); if (it) { bE += it.done; bT += it.done + it.notDone; } }));
+          aggBundleScores[key] = { earned: bE, total: bT, percent: bT > 0 ? ((bE / bT) * 100).toFixed(0) : 0 };
+        });
+        const uniq = new Set(); Object.values(mapping).forEach(c => c.items.forEach(i => uniq.add(String(i).trim())));
+        let oE = 0, oT = 0; uniq.forEach(itemId => aggSectionScores.forEach(sec => { const it = sec.items.find(i => String(i.id) === itemId); if (it) { oE += it.done; oT += it.done + it.notDone; } }));
+        aggBundleScores.OVERALL = { earned: oE, total: oT, percent: oT > 0 ? ((oE / oT) * 100).toFixed(0) : 0 };
+        return { aggSectionScores, grandSummary, aggBundleScores };
+      };
+
+      const editLivePercent = useMemo(() => {
+        if (!editForm || !editForm.sections) return null;
+        return recomputeSummary(editForm.sections, editForm.assessmentType).grandSummary.percentage;
+      }, [editForm]);
 
       const handleUpdateRecord = async () => {
         if (!editRecord || !editForm) return;
         if (!String(editForm.department).trim()) { showPopup({ title: 'ข้อมูลไม่ครบ', message: 'กรุณาระบุหน่วยงาน', type: 'error' }); return; }
         setIsSavingEdit(true);
-        const updated = { ...editRecord, ...editForm, numPeople: parseInt(editForm.numPeople) || editRecord.numPeople };
+        const numPeople = parseInt(editForm.numPeople) || editRecord.numPeople;
+        const hasItemData = editForm.sections && editForm.sections.some(s => s.items && s.items.length > 0);
+        const newSummary = hasItemData ? recomputeSummary(editForm.sections, editForm.assessmentType) : editRecord.overallSummaryData;
+        const updated = { ...editRecord, assessmentType: editForm.assessmentType, deptType: editForm.deptType, department: editForm.department, evaluateeRole: editForm.evaluateeRole, assessorName: editForm.assessorName, numPeople, commendation: editForm.commendation, suggestion: editForm.suggestion, overallSummaryData: newSummary };
+        // สร้างสรุปผลรายข้อสำหรับคอลัมน์ "ข้อ X" ในชีต
+        const itemCells = {};
+        if (hasItemData) newSummary.aggSectionScores.forEach(sec => sec.items.forEach(it => { itemCells['ข้อ ' + it.id] = `ปฏิบัติ ${it.done} · ไม่ปฏิบัติ ${it.notDone} · NA ${it.na}`; }));
         if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
           try {
             const payload = {
               action: 'update', id: editRecord.id, timestampStr: editRecord.timestampStr,
               assessmentType: updated.assessmentType, assessorName: updated.assessorName,
               deptType: updated.deptType, department: updated.department, evaluateeRole: updated.evaluateeRole,
-              numPeople: updated.numPeople, commendation: updated.commendation, suggestion: updated.suggestion,
+              numPeople, commendation: updated.commendation, suggestion: updated.suggestion,
+              totalFullScore: newSummary?.grandSummary?.fullScore, totalEarnedScore: newSummary?.grandSummary?.earnedScore, percentage: newSummary?.grandSummary?.percentage,
+              itemCells: hasItemData ? itemCells : null,
               fullDataJSON: JSON.stringify(updated)
             };
             await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
@@ -3448,7 +3507,7 @@
                  <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
                     <div className="bg-[#285c6c] text-white px-6 py-5 flex items-center gap-3 font-bold text-xl shrink-0"><Edit className="w-6 h-6" /> แก้ไขข้อมูลการประเมิน</div>
                     <div className="p-6 overflow-y-auto">
-                       <div className="text-sm text-slate-500 font-medium mb-4 bg-slate-50 rounded-xl px-4 py-3 border border-gray-200">บันทึกเมื่อ: {editRecord.timestampStr || new Date(editRecord.id).toLocaleString('th-TH')} · ร้อยละเฉลี่ย: <b className="text-[#238885]">{fmtPct(editRecord.overallSummaryData?.grandSummary?.percentage || 0)}%</b> <span className="text-slate-400">(คะแนน/ผลรายข้อไม่ถูกแก้ในหน้านี้)</span></div>
+                       <div className="text-sm text-slate-500 font-medium mb-4 bg-slate-50 rounded-xl px-4 py-3 border border-gray-200">บันทึกเมื่อ: {editRecord.timestampStr || new Date(editRecord.id).toLocaleString('th-TH')} · ร้อยละเฉลี่ยปัจจุบัน: <b className="text-[#238885] text-base">{fmtPct(editLivePercent != null ? editLivePercent : (editRecord.overallSummaryData?.grandSummary?.percentage || 0))}%</b></div>
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                              <label className="block text-sm font-bold text-[#285c6c] mb-2">แบบประเมิน</label>
@@ -3489,6 +3548,50 @@
                              <textarea value={editForm.suggestion} onChange={(e) => setEditForm(f => ({ ...f, suggestion: e.target.value }))} rows="2" className="w-full p-3 border-2 border-gray-200 rounded-xl text-base text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-gray-50 resize-y" />
                           </div>
                        </div>
+
+                       {/* แก้ไขคะแนน/ผลรายข้อ */}
+                       {editForm.sections && editForm.sections.length > 0 && (
+                          <div className="mt-6 border-t-2 border-gray-100 pt-5">
+                             <button type="button" onClick={() => setShowItemEditor(v => !v)} className="flex items-center justify-between w-full text-left font-black text-[#285c6c] text-lg">
+                                <span className="flex items-center gap-2"><Edit className="w-5 h-5" /> แก้ไขคะแนน / ผลรายข้อ</span>
+                                <ChevronDown className={`w-6 h-6 transition-transform ${showItemEditor ? 'rotate-180' : ''}`} />
+                             </button>
+                             <p className="text-xs text-slate-400 font-medium mt-1 mb-3">{(parseInt(editForm.numPeople) || 1) <= 1 ? 'กดเลือก ปฏิบัติ / ไม่ปฏิบัติ / NA ของแต่ละข้อ' : 'กรอกจำนวนคน ปฏิบัติ / ไม่ปฏิบัติ / NA ของแต่ละข้อ'} — ระบบคำนวณร้อยละใหม่อัตโนมัติ</p>
+                             {showItemEditor && (
+                                <div className="flex flex-col gap-4 max-h-[45vh] overflow-y-auto pr-1">
+                                   {editForm.sections.map((sec, si) => (
+                                      <div key={si} className="border border-gray-200 rounded-2xl overflow-hidden">
+                                         <div className="bg-slate-100 px-4 py-2.5 font-bold text-[#32355c] text-sm">{sec.title || `หมวด ${si + 1}`}</div>
+                                         <div className="divide-y divide-gray-100">
+                                            {sec.items.map((it, ii) => {
+                                               const single = (parseInt(editForm.numPeople) || 1) <= 1;
+                                               return (
+                                                  <div key={ii} className="p-3 flex flex-col sm:flex-row sm:items-center gap-2">
+                                                     <div className="flex-1 text-sm text-slate-700 font-medium min-w-0"><span className="text-slate-400 mr-1 font-bold">{it.id}</span>{it.text}</div>
+                                                     {single ? (
+                                                        <div className="flex gap-1 shrink-0">
+                                                           {[['DONE', 'ปฏิบัติ', '#15803d', '#dcfce7'], ['NOT_DONE', 'ไม่ปฏิบัติ', '#b91c1c', '#fee2e2'], ['NA', 'NA', '#6b7280', '#f1f5f9']].map(([key, label, fg, bg]) => {
+                                                              const active = (key === 'DONE' && it.done > 0) || (key === 'NOT_DONE' && it.notDone > 0) || (key === 'NA' && it.na > 0);
+                                                              return <button key={key} type="button" onClick={() => setItemChoice(si, ii, key)} className="px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" style={active ? { background: bg, color: fg, borderColor: fg } : { background: '#fff', color: '#94a3b8', borderColor: '#e5e7eb' }}>{label}</button>;
+                                                           })}
+                                                        </div>
+                                                     ) : (
+                                                        <div className="flex gap-2 shrink-0 items-center text-xs">
+                                                           <label className="flex items-center gap-1"><span className="text-[#15803d] font-bold">ปฏิบัติ</span><input type="number" min="0" value={it.done} onChange={e => setItemVal(si, ii, 'done', e.target.value)} className="w-14 p-1.5 border-2 border-gray-200 rounded-lg text-center font-bold outline-none focus:ring-2 focus:ring-[#16bba6]" /></label>
+                                                           <label className="flex items-center gap-1"><span className="text-[#b91c1c] font-bold">ไม่ปฏิบัติ</span><input type="number" min="0" value={it.notDone} onChange={e => setItemVal(si, ii, 'notDone', e.target.value)} className="w-14 p-1.5 border-2 border-gray-200 rounded-lg text-center font-bold outline-none focus:ring-2 focus:ring-[#16bba6]" /></label>
+                                                           <label className="flex items-center gap-1"><span className="text-slate-500 font-bold">NA</span><input type="number" min="0" value={it.na} onChange={e => setItemVal(si, ii, 'na', e.target.value)} className="w-14 p-1.5 border-2 border-gray-200 rounded-lg text-center font-bold outline-none focus:ring-2 focus:ring-[#16bba6]" /></label>
+                                                        </div>
+                                                     )}
+                                                  </div>
+                                               );
+                                            })}
+                                         </div>
+                                      </div>
+                                   ))}
+                                </div>
+                             )}
+                          </div>
+                       )}
                     </div>
                     <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
                        <button onClick={closeEditRecord} disabled={isSavingEdit} className="px-5 py-2.5 rounded-xl font-bold text-slate-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50">ยกเลิก</button>
