@@ -1295,10 +1295,23 @@
       const [showItemEditor, setShowItemEditor] = useState(false);
 
       const openEditRecord = (r) => {
-        const secs = (r.overallSummaryData?.aggSectionScores || []).map(sec => ({
-          id: sec.id, title: sec.title,
-          items: (sec.items || []).map(it => ({ id: it.id, text: it.text, done: parseInt(it.done) || 0, notDone: parseInt(it.notDone) || 0, na: parseInt(it.na) || 0 }))
-        }));
+        // ดึงคะแนนที่บันทึกไว้ต่อข้อ (จาก id) เพื่อเติมค่าลงในโครงแบบประเมิน
+        const saved = {};
+        (r.overallSummaryData?.aggSectionScores || []).forEach(sec => (sec.items || []).forEach(it => { saved[String(it.id)] = { done: parseInt(it.done) || 0, notDone: parseInt(it.notDone) || 0, na: parseInt(it.na) || 0 }; }));
+        // สร้างจากแบบประเมินจริง (dynamicChecklists) เพื่อให้แสดง "ครบทุกข้อ" ไม่ถูกตัด แล้วเติมคะแนนจากที่บันทึกไว้
+        const checklist = (dynamicChecklists && dynamicChecklists[r.assessmentType]) || null;
+        let secs;
+        if (checklist && checklist.length) {
+          secs = checklist.map(section => ({
+            id: section.id, title: section.title,
+            items: (section.items || []).map(it => { const s = saved[String(it.id)] || {}; return { id: it.id, text: it.text, done: s.done || 0, notDone: s.notDone || 0, na: s.na || 0 }; })
+          }));
+        } else {
+          secs = (r.overallSummaryData?.aggSectionScores || []).map(sec => ({
+            id: sec.id, title: sec.title,
+            items: (sec.items || []).map(it => ({ id: it.id, text: it.text, done: parseInt(it.done) || 0, notDone: parseInt(it.notDone) || 0, na: parseInt(it.na) || 0 }))
+          }));
+        }
         setShowItemEditor(false);
         setEditRecord(r);
         setEditForm({
@@ -3558,36 +3571,41 @@
                              </button>
                              <p className="text-xs text-slate-400 font-medium mt-1 mb-3">{(parseInt(editForm.numPeople) || 1) <= 1 ? 'กดเลือก ปฏิบัติ / ไม่ปฏิบัติ / NA ของแต่ละข้อ' : 'กรอกจำนวนคน ปฏิบัติ / ไม่ปฏิบัติ / NA ของแต่ละข้อ'} — ระบบคำนวณร้อยละใหม่อัตโนมัติ</p>
                              {showItemEditor && (
-                                <div className="flex flex-col gap-4 max-h-[45vh] overflow-y-auto pr-1">
-                                   {editForm.sections.map((sec, si) => (
-                                      <div key={si} className="border border-gray-200 rounded-2xl overflow-hidden">
-                                         <div className="bg-slate-100 px-4 py-2.5 font-bold text-[#32355c] text-sm">{sec.title || `หมวด ${si + 1}`}</div>
-                                         <div className="divide-y divide-gray-100">
-                                            {sec.items.map((it, ii) => {
-                                               const single = (parseInt(editForm.numPeople) || 1) <= 1;
-                                               return (
-                                                  <div key={ii} className="p-3 flex flex-col sm:flex-row sm:items-center gap-2">
-                                                     <div className="flex-1 text-sm text-slate-700 font-medium min-w-0"><span className="text-slate-400 mr-1 font-bold">{it.id}</span>{it.text}</div>
-                                                     {single ? (
-                                                        <div className="flex gap-1 shrink-0">
-                                                           {[['DONE', 'ปฏิบัติ', '#15803d', '#dcfce7'], ['NOT_DONE', 'ไม่ปฏิบัติ', '#b91c1c', '#fee2e2'], ['NA', 'NA', '#6b7280', '#f1f5f9']].map(([key, label, fg, bg]) => {
-                                                              const active = (key === 'DONE' && it.done > 0) || (key === 'NOT_DONE' && it.notDone > 0) || (key === 'NA' && it.na > 0);
-                                                              return <button key={key} type="button" onClick={() => setItemChoice(si, ii, key)} className="px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" style={active ? { background: bg, color: fg, borderColor: fg } : { background: '#fff', color: '#94a3b8', borderColor: '#e5e7eb' }}>{label}</button>;
-                                                           })}
-                                                        </div>
-                                                     ) : (
-                                                        <div className="flex gap-2 shrink-0 items-center text-xs">
-                                                           <label className="flex items-center gap-1"><span className="text-[#15803d] font-bold">ปฏิบัติ</span><input type="number" min="0" value={it.done} onChange={e => setItemVal(si, ii, 'done', e.target.value)} className="w-14 p-1.5 border-2 border-gray-200 rounded-lg text-center font-bold outline-none focus:ring-2 focus:ring-[#16bba6]" /></label>
-                                                           <label className="flex items-center gap-1"><span className="text-[#b91c1c] font-bold">ไม่ปฏิบัติ</span><input type="number" min="0" value={it.notDone} onChange={e => setItemVal(si, ii, 'notDone', e.target.value)} className="w-14 p-1.5 border-2 border-gray-200 rounded-lg text-center font-bold outline-none focus:ring-2 focus:ring-[#16bba6]" /></label>
-                                                           <label className="flex items-center gap-1"><span className="text-slate-500 font-bold">NA</span><input type="number" min="0" value={it.na} onChange={e => setItemVal(si, ii, 'na', e.target.value)} className="w-14 p-1.5 border-2 border-gray-200 rounded-lg text-center font-bold outline-none focus:ring-2 focus:ring-[#16bba6]" /></label>
-                                                        </div>
-                                                     )}
-                                                  </div>
-                                               );
+                                <div className="flex flex-col gap-4 max-h-[52vh] overflow-y-auto pr-1">
+                                   {editForm.sections.map((sec, si) => {
+                                      const single = (parseInt(editForm.numPeople) || 1) <= 1;
+                                      // หัวข้อที่ประเมินได้เองและไม่มีข้อย่อย (ข้อความข้อ = ชื่อหัวข้อ) → แสดงเป็นแถวเดียวมีปุ่มแก้ ไม่ทำเป็นหัวเทาเปล่า
+                                      const merged = sec.items.length === 1 && String(sec.items[0].text || '').trim() === String(sec.title || '').trim();
+                                      const controls = (it, ii) => single ? (
+                                         <div className="flex gap-1 shrink-0">
+                                            {[['DONE', 'ปฏิบัติ', '#15803d', '#dcfce7'], ['NOT_DONE', 'ไม่ปฏิบัติ', '#b91c1c', '#fee2e2'], ['NA', 'NA', '#6b7280', '#f1f5f9']].map(([key, label, fg, bg]) => {
+                                               const active = (key === 'DONE' && it.done > 0) || (key === 'NOT_DONE' && it.notDone > 0) || (key === 'NA' && it.na > 0);
+                                               return <button key={key} type="button" onClick={() => setItemChoice(si, ii, key)} className="px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-colors" style={active ? { background: bg, color: fg, borderColor: fg } : { background: '#fff', color: '#94a3b8', borderColor: '#e5e7eb' }}>{label}</button>;
                                             })}
                                          </div>
-                                      </div>
-                                   ))}
+                                      ) : (
+                                         <div className="flex gap-2 shrink-0 items-center text-xs">
+                                            <label className="flex items-center gap-1"><span className="text-[#15803d] font-bold">ปฏิบัติ</span><input type="number" min="0" value={it.done} onChange={e => setItemVal(si, ii, 'done', e.target.value)} className="w-14 p-1.5 border-2 border-gray-200 rounded-lg text-center font-bold outline-none focus:ring-2 focus:ring-[#16bba6]" /></label>
+                                            <label className="flex items-center gap-1"><span className="text-[#b91c1c] font-bold">ไม่ปฏิบัติ</span><input type="number" min="0" value={it.notDone} onChange={e => setItemVal(si, ii, 'notDone', e.target.value)} className="w-14 p-1.5 border-2 border-gray-200 rounded-lg text-center font-bold outline-none focus:ring-2 focus:ring-[#16bba6]" /></label>
+                                            <label className="flex items-center gap-1"><span className="text-slate-500 font-bold">NA</span><input type="number" min="0" value={it.na} onChange={e => setItemVal(si, ii, 'na', e.target.value)} className="w-14 p-1.5 border-2 border-gray-200 rounded-lg text-center font-bold outline-none focus:ring-2 focus:ring-[#16bba6]" /></label>
+                                         </div>
+                                      );
+                                      return (
+                                         <div key={si} className="border border-gray-200 rounded-2xl overflow-hidden">
+                                            {!merged && <div className="bg-slate-100 px-4 py-2.5 font-bold text-[#32355c] text-sm">{sec.title || `หมวด ${si + 1}`}</div>}
+                                            <div className="divide-y divide-gray-100">
+                                               {sec.items.length === 0 ? (
+                                                  <div className="p-3 text-sm text-slate-400 italic">ไม่มีข้อย่อยสำหรับหัวข้อนี้</div>
+                                               ) : sec.items.map((it, ii) => (
+                                                  <div key={ii} className={`p-3 flex flex-col sm:flex-row sm:items-center gap-2 ${merged ? 'bg-slate-50/60' : ''}`}>
+                                                     <div className="flex-1 text-sm text-slate-700 font-medium min-w-0">{!merged && <span className="text-slate-400 mr-1 font-bold">{it.id}</span>}{it.text}</div>
+                                                     {controls(it, ii)}
+                                                  </div>
+                                               ))}
+                                            </div>
+                                         </div>
+                                      );
+                                   })}
                                 </div>
                              )}
                           </div>
