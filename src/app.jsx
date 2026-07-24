@@ -664,6 +664,59 @@
             </div>`;
       };
 
+      // ====== สร้าง PDF แบบ "กราฟ" (ใช้กับพรีวิวสรุปภาพรวมในหน้าประวัติ ให้เหมือนที่เห็นบนจอ) ======
+      const _esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      // กราฟแท่งแนวตั้ง (static HTML) พร้อมแกน Y + เส้นกริด + สีไล่เฉด
+      const barChartHTML = (data) => {
+          if (!data || data.length === 0) return '<div style="text-align:center; color:#94a3b8; padding:30px;">ยังไม่มีข้อมูล</div>';
+          const H = 200, ticks = [100, 75, 50, 25, 0];
+          const yax = ticks.map(t => `<div style="position:absolute; right:4px; transform:translateY(-50%); top:${H - (t / 100) * H}px; font-size:10px; color:#94a3b8; font-weight:500;">${t}</div>`).join('');
+          const grid = ticks.map(t => `<div style="position:absolute; left:0; right:0; top:${H - (t / 100) * H}px; border-top:${t === 0 ? '2px solid #d1d5db' : '1px solid #e5e7eb'};"></div>`).join('');
+          const bars = data.map(d => {
+              const v = parseFloat(d.value) || 0;
+              return `<div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:${H}px;"><div style="font-size:13px; font-weight:800; margin-bottom:2px; color:${scoreDark(v)}; white-space:nowrap;">${fmtPct(v)}%</div><div style="height:${Math.max(v / 100 * H, 2)}px; width:60%; max-width:46px; background:${scoreGrad(v)}; border-radius:6px 6px 0 0; -webkit-print-color-adjust:exact; print-color-adjust:exact;"></div></div>`;
+          }).join('');
+          const xl = data.map(d => `<div style="flex:1; text-align:center;"><div style="font-size:12px; font-weight:700; color:#475569; margin-top:8px; line-height:1.2;">${_esc(d.label)}</div>${d.count != null ? `<div style="font-size:10px; color:#94a3b8; margin-top:3px;">${d.count} ครั้ง${d.people != null ? ' · ' + d.people + ' คน/เหตุฯ' : ''}</div>` : ''}</div>`).join('');
+          return `<div style="display:flex; padding-top:20px;"><div style="position:relative; width:30px; height:${H}px; flex:none;">${yax}</div><div style="flex:1;"><div style="position:relative; height:${H}px;">${grid}<div style="position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:space-around; gap:8px;">${bars}</div></div><div style="display:flex; justify-content:space-around; gap:8px;">${xl}</div></div></div>`;
+      };
+
+      // กราฟเส้น (static SVG) แนวโน้มตามเวลา
+      const lineChartHTML = (data) => {
+          if (!data || data.length === 0) return '<div style="text-align:center; color:#94a3b8; padding:30px;">ยังไม่มีข้อมูล</div>';
+          const W = 714, H = 230, padX = 44, padY = 30, plotW = W - padX * 2, plotH = H - padY * 2;
+          const x = (i) => data.length === 1 ? padX + plotW / 2 : padX + (i / (data.length - 1)) * plotW;
+          const y = (v) => padY + plotH - (Math.min(Math.max(v, 0), 100) / 100) * plotH;
+          const pts = data.map((d, i) => `${x(i)},${y(parseFloat(d.value) || 0)}`).join(' ');
+          const gl = [0, 25, 50, 75, 100].map(g => { const gy = y(g); return `<line x1="${padX}" y1="${gy}" x2="${W - padX}" y2="${gy}" stroke="#e5e7eb" stroke-width="1"/><text x="${padX - 8}" y="${gy + 4}" text-anchor="end" font-size="11" fill="#94a3b8">${g}</text>`; }).join('');
+          const dots = data.map((d, i) => { const v = parseFloat(d.value) || 0; return `<circle cx="${x(i)}" cy="${y(v)}" r="4.5" fill="${scoreHex(v)}" stroke="#fff" stroke-width="1.5"/><text x="${x(i)}" y="${y(v) - 11}" text-anchor="middle" font-size="11" font-weight="700" fill="#238885">${fmtPct(v)}%</text><text x="${x(i)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="#64748b">${_esc(d.label)}</text>`; }).join('');
+          return `<svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto;">${gl}<polyline points="${pts}" fill="none" stroke="#238885" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${dots}</svg>`;
+      };
+
+      const chartLegendHTML = () => `<div style="display:flex; flex-wrap:wrap; gap:16px; margin-top:14px; padding-top:12px; border-top:1px solid #f1f5f9; font-size:11px; font-weight:700; color:#334155;"><span><span style="display:inline-block; width:13px; height:13px; border-radius:3px; background:linear-gradient(to top,#5a7d4a,#a7c98f); vertical-align:-2px; margin-right:6px;"></span>ดี (≥80%)</span><span><span style="display:inline-block; width:13px; height:13px; border-radius:3px; background:linear-gradient(to top,#c9a74a,#f2dd93); vertical-align:-2px; margin-right:6px;"></span>พอใช้ (60–79%)</span><span><span style="display:inline-block; width:13px; height:13px; border-radius:3px; background:linear-gradient(to top,#d97e45,#f6b78a); vertical-align:-2px; margin-right:6px;"></span>ควรปรับปรุง (&lt;60%)</span></div>`;
+
+      const chartCardHTML = (title, subtitle, inner, withLegend) => `<div style="border:2px solid #e5e7eb; border-radius:18px; padding:18px 20px; margin-bottom:16px; background:#fff;"><div style="font-size:15pt; font-weight:800; color:#32355c; line-height:1.2;">${_esc(title)}</div>${subtitle ? `<div style="font-size:11pt; color:#94a3b8; margin-top:2px;">${_esc(subtitle)}</div>` : ''}<div style="margin-top:6px;">${inner}</div>${withLegend ? chartLegendHTML() : ''}</div>`;
+
+      const overviewCardsHTML = (st) => `<div style="display:flex; gap:14px; margin-bottom:16px;"><div style="flex:1; border:2px solid #e5e7eb; border-radius:16px; padding:16px; text-align:center;"><div style="font-size:11pt; color:#64748b; font-weight:700; margin-bottom:6px;">จำนวนการประเมิน</div><div style="font-size:24pt; font-weight:900; color:#32355c;">${st.totalRecords} <span style="font-size:12pt; color:#94a3b8;">ครั้ง</span></div></div><div style="flex:1; border:2px solid #e5e7eb; border-radius:16px; padding:16px; text-align:center;"><div style="font-size:11pt; color:#64748b; font-weight:700; margin-bottom:6px;">ผู้รับการประเมิน</div><div style="font-size:24pt; font-weight:900; color:#32355c;">${st.totalPeople} <span style="font-size:12pt; color:#94a3b8;">คน/เหตุฯ</span></div></div><div style="flex:1; border:2px solid #16bba6; border-radius:16px; padding:16px; text-align:center; background:rgba(22,187,166,.08); -webkit-print-color-adjust:exact; print-color-adjust:exact;"><div style="font-size:11pt; color:#0d7a6c; font-weight:700; margin-bottom:6px;">คะแนนเฉลี่ยรวม</div><div style="font-size:24pt; font-weight:900; color:#238885;">${fmtPct(st.overallAvg)}%</div></div></div>`;
+
+      // แบ่ง block ลงหน้า A4 ตามงบความสูง (px) แล้วประกอบเป็นหน้าเหมือน buildHTMLFromData (มี .pdf-page ให้ html2canvas จับ)
+      const buildChartPages = (title, subtitle, blocks) => {
+          const A4 = "width:794px; min-height:1123px; background:#fff; padding:34px 40px 48px; box-shadow:0 4px 6px rgba(0,0,0,0.2); margin:0 auto; box-sizing:border-box; position:relative; font-family:'Sarabun', sans-serif; color:#000;";
+          const pages = []; let cur = [], used = 0, budget = 740;
+          blocks.forEach(b => { if (cur.length && used + b.h > budget) { pages.push(cur); cur = []; used = 0; budget = 1030; } cur.push(b); used += b.h; });
+          if (cur.length) pages.push(cur);
+          if (pages.length === 0) pages.push([]);
+          const total = pages.length;
+          let html = `<div style="background-color:#cbd5e1; padding:40px 20px; display:flex; flex-direction:column; gap:30px; align-items:center;" id="pdf-pages-container">`;
+          pages.forEach((pg, i) => {
+              const pageNo = `<div style="position:absolute; top:15px; right:40px; font-size:12pt; color:#555; font-weight:bold;">หน้า ${i + 1}/${total}</div>`;
+              const header = i === 0 ? `<div style="text-align:center; margin-bottom:18px;"><div style="font-size:20pt; font-weight:bold;">${title}</div>${subtitle ? `<div style="font-size:14pt; color:#333; margin-top:4px;">${subtitle}</div>` : ''}</div>` : '';
+              html += `<div class="pdf-page" style="${A4}">${pageNo}${header}${pg.map(b => b.html).join('')}</div>`;
+          });
+          html += `</div>`;
+          return html;
+      };
+
       const buildHTMLFromData = (wsData, reportTitle, subtitle = '', signatureHtml = '') => {
           // สไตล์สำหรับหน้า A4 (794px x 1123px) ปรับ Padding ด้านล่าง (60px) ให้กว้างขึ้นเพื่อป้องกันตกขอบ
           const a4Style = "width: 794px; height: 1123px; background: white; padding: 35px 40px 60px 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); margin: 0 auto; box-sizing: border-box; position: relative; overflow: hidden; display: flex; flex-direction: column;";
@@ -3057,76 +3110,38 @@
             XLSX.writeFile(wb, `ประวัติการประเมิน_${new Date().getTime()}.xlsx`);
          };
 
-         // สร้างข้อมูล PDF ของ "สรุปภาพรวม" (ตารางคะแนนเฉลี่ยตามข้อมูลที่กรอง + ขอบเขตแท็บ)
-         const getHistorySummaryData = () => {
-            const wsData = [];
-            wsData.push(["สรุปผลการประเมินภาพรวม", "โรงพยาบาลศรีสังวรสุโขทัย"]); // มาร์กเกอร์ให้ข้ามหัวเรื่องซ้ำ
-            wsData.push([]);
-            if (!summaryStats || summaryStats.totalRecords === 0) return wsData;
-            wsData.push(["ข้อมูลภาพรวม"]);
-            wsData.push(["จำนวนการประเมินทั้งหมด", summaryStats.totalRecords + " ครั้ง"]);
-            wsData.push(["จำนวนผู้รับการประเมินรวม", summaryStats.totalPeople + " คน/เหตุการณ์"]);
-            wsData.push(["คะแนนเฉลี่ยรวมทุกประเภท", fmtPct(summaryStats.overallAvg) + "%"]);
-            if (summaryStats.typeAverages && summaryStats.typeAverages.length > 0) {
-               wsData.push([]);
-               wsData.push(["คะแนนเฉลี่ยแยกตามประเภทแบบประเมิน", "ประเมิน (ครั้ง)", "ผู้รับประเมิน", "ร้อยละเฉลี่ย"]);
-               summaryStats.typeAverages.forEach(s => wsData.push([s.type, s.count, s.peopleCount, fmtPct(s.avg) + "%"]));
-            }
-            if (summaryStats.deptTypeAveragesByType) {
-               Object.keys(summaryStats.deptTypeAveragesByType).forEach(type => {
-                  const arr = summaryStats.deptTypeAveragesByType[type];
-                  if (!arr || arr.length === 0) return;
-                  wsData.push([]);
-                  wsData.push([`คะแนนเฉลี่ยแยกตามประเภทหน่วยงาน - ${type}`, "ประเมิน (ครั้ง)", "ผู้รับประเมิน", "ร้อยละเฉลี่ย"]);
-                  arr.forEach(s => wsData.push([s.deptType, s.count, s.peopleCount, fmtPct(s.avg) + "%"]));
-               });
-            }
-            if (summaryStats.deptAveragesByType) {
-               Object.keys(summaryStats.deptAveragesByType).forEach(type => {
-                  const arr = summaryStats.deptAveragesByType[type];
-                  if (!arr || arr.length === 0) return;
-                  wsData.push([]);
-                  wsData.push([`คะแนนเฉลี่ยแยกตามหน่วยงาน - ${type}`, "ประเมิน (ครั้ง)", "ผู้รับประเมิน", "ร้อยละเฉลี่ย"]);
-                  arr.forEach(s => wsData.push([s.department, s.count, s.peopleCount, fmtPct(s.avg) + "%"]));
-               });
-            }
-            return wsData;
-         };
-
-         // พรีวิว PDF ตามแท็บย่อยที่เลือก: รายการบันทึก / สรุปภาพรวม (ประเมินตนเอง) / สรุปภาพรวม ICN
+         // พรีวิว PDF ตามแท็บย่อยที่เลือก: รายการบันทึก (ตาราง) / สรุปภาพรวม (กราฟเหมือนบนจอ) / สรุป ICN (กราฟ)
          const handleGenerateHistoryPDF = () => {
             const isSummary = historyTab === 'summary' || historyTab === 'summaryICN';
-            if (isSummary && (!summaryStats || summaryStats.totalRecords === 0)) {
-               showPopup({ title: 'ไม่มีข้อมูล', message: 'ยังไม่มีข้อมูลสำหรับสรุปภาพรวมตามเงื่อนไขที่เลือก', type: 'info' });
+            const historySigners = (src) => (signatures || []).filter(s => { const nm = String(s.name).trim(); return src.some(r => String(r.assessorName || '').trim() === nm); });
+
+            if (isSummary) {
+               if (!summaryStats || summaryStats.totalRecords === 0) {
+                  showPopup({ title: 'ไม่มีข้อมูล', message: 'ยังไม่มีข้อมูลสำหรับสรุปภาพรวมตามเงื่อนไขที่เลือก', type: 'info' });
+                  return;
+               }
+               const scope = historyTab === 'summaryICN' ? 'การนิเทศโดย ICN' : 'การประเมินตนเอง';
+               const st = summaryStats;
+               const blocks = [{ h: 165, html: overviewCardsHTML(st) }];
+               const pushCard = (h, title, sub, inner, legend) => blocks.push({ h, html: chartCardHTML(title, sub, inner, legend) });
+               if (chartData.byDeptType.length) pushCard(400, 'คะแนนเฉลี่ยการปฏิบัติ แยกตามประเภทหน่วยงาน', 'IPD / OPD / กลุ่มงานให้บริการผู้ป่วย', barChartHTML(chartData.byDeptType), true);
+               if (chartData.byType.length) pushCard(400, 'คะแนนเฉลี่ยการปฏิบัติ แยกตามแบบประเมิน', 'เรียงจากมากไปน้อย', barChartHTML(chartData.byType), true);
+               if (chartData.byMonth.length) pushCard(340, 'แนวโน้มร้อยละเฉลี่ยรายเดือน', 'พัฒนาการการปฏิบัติตามช่วงเวลา', lineChartHTML(chartData.byMonth), false);
+               if (st.typeAverages && st.typeAverages.length) pushCard(400, 'คะแนนเฉลี่ยแยกตามประเภทแบบประเมิน', '', barChartHTML(st.typeAverages.map(s => ({ label: s.type, value: s.avg, count: s.count, people: s.peopleCount }))), true);
+               Object.keys(st.deptTypeAveragesByType || {}).forEach(type => { const arr = st.deptTypeAveragesByType[type]; if (arr && arr.length) pushCard(400, `คะแนนเฉลี่ยแยกตามประเภทหน่วยงาน - ${type}`, '', barChartHTML(arr.map(s => ({ label: s.deptType, value: s.avg, count: s.count, people: s.peopleCount }))), true); });
+               Object.keys(st.deptAveragesByType || {}).forEach(type => { const arr = st.deptAveragesByType[type]; if (arr && arr.length) pushCard(400, `คะแนนเฉลี่ยแยกตามหน่วยงาน - ${type}`, '', barChartHTML(arr.map(s => ({ label: s.department, value: s.avg, count: s.count, people: s.peopleCount }))), true); });
+               const sigHtml = buildSignatureHtml(historySigners(summarySource));
+               if (sigHtml) blocks.push({ h: 230, html: sigHtml });
+               const html = buildChartPages("สรุปภาพรวมผลการประเมินมาตรฐาน IC", `โรงพยาบาลศรีสังวรสุโขทัย — ${scope}`, blocks);
+               const fnamePrefix = historyTab === 'summaryICN' ? 'สรุปภาพรวม_ICN' : 'สรุปภาพรวม_ประเมินตนเอง';
+               setPdfPreviewState({ isOpen: true, htmlContent: html, filename: `${fnamePrefix}_${new Date().getTime()}.pdf` });
                return;
             }
-            let wsData, reportTitle, subtitle, fnamePrefix, sigSource;
-            if (isSummary) {
-               wsData = getHistorySummaryData();
-               const scope = historyTab === 'summaryICN' ? 'การนิเทศโดย ICN' : 'การประเมินตนเอง';
-               reportTitle = "<span style='font-size: 15pt; line-height: 1.3;'>สรุปภาพรวมผลการประเมินมาตรฐาน IC</span>";
-               subtitle = `โรงพยาบาลศรีสังวรสุโขทัย — ${scope}`;
-               fnamePrefix = historyTab === 'summaryICN' ? 'สรุปภาพรวม_ICN' : 'สรุปภาพรวม_ประเมินตนเอง';
-               sigSource = summarySource;
-            } else {
-               wsData = getHistoryExcelData();
-               reportTitle = "ประวัติการบันทึกการประเมินมาตรฐาน IC";
-               subtitle = '';
-               fnamePrefix = 'ประวัติการประเมิน';
-               sigSource = filteredRecords;
-            }
+
+            const wsData = getHistoryExcelData();
             if (wsData.length === 0) return;
-            // ผู้ลงนาม: เฉพาะผู้ประเมินจริงในขอบเขตของแท็บนั้น และมีชื่อในชีต "ลงนาม"
-            const historySigners = (signatures || []).filter(s => {
-                const nm = String(s.name).trim();
-                return sigSource.some(r => String(r.assessorName || '').trim() === nm);
-            });
-            const html = buildHTMLFromData(wsData, reportTitle, subtitle, buildSignatureHtml(historySigners));
-            setPdfPreviewState({
-                isOpen: true,
-                htmlContent: html,
-                filename: `${fnamePrefix}_${new Date().getTime()}.pdf`
-            });
+            const html = buildHTMLFromData(wsData, "ประวัติการบันทึกการประเมินมาตรฐาน IC", '', buildSignatureHtml(historySigners(filteredRecords)));
+            setPdfPreviewState({ isOpen: true, htmlContent: html, filename: `ประวัติการประเมิน_${new Date().getTime()}.pdf` });
          };
 
          if (!isHistoryAuthenticated) {
