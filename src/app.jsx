@@ -670,15 +670,30 @@
       // กราฟแท่งแนวตั้ง (static HTML) พร้อมแกน Y + เส้นกริด + สีไล่เฉด
       const barChartHTML = (data) => {
           if (!data || data.length === 0) return '<div style="text-align:center; color:#94a3b8; padding:30px;">ยังไม่มีข้อมูล</div>';
+          const n = data.length;
+          const dense = n > 10;            // แท่งเยอะ → หมุนป้ายเป็นแนวตั้ง กันล้นหน้า
           const H = 200, ticks = [100, 75, 50, 25, 0];
+          const barMax = n > 16 ? 22 : n > 10 ? 30 : 46;
+          const gap = dense ? 3 : 8;
+          const valFont = n > 16 ? 8 : dense ? 9 : 13;
+          const labFont = n > 16 ? 8 : dense ? 9 : 12;
+          const topPad = dense ? 46 : 22;  // เผื่อที่ป้ายตัวเลขแนวตั้งเหนือแท่ง
           const yax = ticks.map(t => `<div style="position:absolute; right:4px; transform:translateY(-50%); top:${H - (t / 100) * H}px; font-size:10px; color:#94a3b8; font-weight:500;">${t}</div>`).join('');
           const grid = ticks.map(t => `<div style="position:absolute; left:0; right:0; top:${H - (t / 100) * H}px; border-top:${t === 0 ? '2px solid #d1d5db' : '1px solid #e5e7eb'};"></div>`).join('');
           const bars = data.map(d => {
               const v = parseFloat(d.value) || 0;
-              return `<div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:${H}px;"><div style="font-size:13px; font-weight:800; margin-bottom:2px; color:${scoreDark(v)}; white-space:nowrap;">${fmtPct(v)}%</div><div style="height:${Math.max(v / 100 * H, 2)}px; width:60%; max-width:46px; background:${scoreGrad(v)}; border-radius:6px 6px 0 0; -webkit-print-color-adjust:exact; print-color-adjust:exact;"></div></div>`;
+              const val = dense
+                ? `<div style="height:42px; display:flex; align-items:flex-end; justify-content:center; width:100%; overflow:visible;"><span style="transform:rotate(-90deg); transform-origin:center; white-space:nowrap; font-size:${valFont}px; font-weight:800; color:${scoreDark(v)};">${fmtPct(v)}%</span></div>`
+                : `<div style="font-size:${valFont}px; font-weight:800; margin-bottom:2px; color:${scoreDark(v)}; white-space:nowrap;">${fmtPct(v)}%</div>`;
+              return `<div style="flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:${H}px;">${val}<div style="height:${Math.max(v / 100 * H, 2)}px; width:${dense ? '82%' : '60%'}; max-width:${barMax}px; background:${scoreGrad(v)}; border-radius:${dense ? '3px 3px 0 0' : '6px 6px 0 0'}; -webkit-print-color-adjust:exact; print-color-adjust:exact;"></div></div>`;
           }).join('');
-          const xl = data.map(d => `<div style="flex:1; text-align:center;"><div style="font-size:12px; font-weight:700; color:#475569; margin-top:8px; line-height:1.2;">${_esc(d.label)}</div>${d.count != null ? `<div style="font-size:10px; color:#94a3b8; margin-top:3px;">${d.count} ครั้ง${d.people != null ? ' · ' + d.people + ' คน/เหตุฯ' : ''}</div>` : ''}</div>`).join('');
-          return `<div style="display:flex; padding-top:20px;"><div style="position:relative; width:30px; height:${H}px; flex:none;">${yax}</div><div style="flex:1;"><div style="position:relative; height:${H}px;">${grid}<div style="position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:space-around; gap:8px;">${bars}</div></div><div style="display:flex; justify-content:space-around; gap:8px;">${xl}</div></div></div>`;
+          const xl = data.map(d => {
+              const sub = d.count != null ? (' (' + d.count + (d.people != null && !dense ? ' ครั้ง · ' + d.people + ' คน' : '') + ')') : '';
+              return dense
+                ? `<div style="flex:1; min-width:0; height:72px; position:relative;"><div style="position:absolute; top:6px; left:50%; transform:translateX(-50%) rotate(-58deg); transform-origin:top center; white-space:nowrap; font-size:${labFont}px; font-weight:700; color:#475569;">${_esc(d.label)}${sub}</div></div>`
+                : `<div style="flex:1; min-width:0; text-align:center;"><div style="font-size:${labFont}px; font-weight:700; color:#475569; margin-top:8px; line-height:1.2;">${_esc(d.label)}</div>${d.count != null ? `<div style="font-size:10px; color:#94a3b8; margin-top:3px;">${d.count} ครั้ง${d.people != null ? ' · ' + d.people + ' คน/เหตุฯ' : ''}</div>` : ''}</div>`;
+          }).join('');
+          return `<div style="display:flex; padding-top:${topPad}px;"><div style="position:relative; width:30px; height:${H}px; flex:none;">${yax}</div><div style="flex:1; min-width:0;"><div style="position:relative; height:${H}px;">${grid}<div style="position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:space-around; gap:${gap}px;">${bars}</div></div><div style="display:flex; justify-content:space-around; gap:${gap}px;">${xl}</div></div></div>`;
       };
 
       // กราฟเส้น (static SVG) แนวโน้มตามเวลา
@@ -3123,13 +3138,14 @@
                const scope = historyTab === 'summaryICN' ? 'การนิเทศโดย ICN' : 'การประเมินตนเอง';
                const st = summaryStats;
                const blocks = [{ h: 165, html: overviewCardsHTML(st) }];
-               const pushCard = (h, title, sub, inner, legend) => blocks.push({ h, html: chartCardHTML(title, sub, inner, legend) });
-               if (chartData.byDeptType.length) pushCard(400, 'คะแนนเฉลี่ยการปฏิบัติ แยกตามประเภทหน่วยงาน', 'IPD / OPD / กลุ่มงานให้บริการผู้ป่วย', barChartHTML(chartData.byDeptType), true);
-               if (chartData.byType.length) pushCard(400, 'คะแนนเฉลี่ยการปฏิบัติ แยกตามแบบประเมิน', 'เรียงจากมากไปน้อย', barChartHTML(chartData.byType), true);
-               if (chartData.byMonth.length) pushCard(340, 'แนวโน้มร้อยละเฉลี่ยรายเดือน', 'พัฒนาการการปฏิบัติตามช่วงเวลา', lineChartHTML(chartData.byMonth), false);
-               if (st.typeAverages && st.typeAverages.length) pushCard(400, 'คะแนนเฉลี่ยแยกตามประเภทแบบประเมิน', '', barChartHTML(st.typeAverages.map(s => ({ label: s.type, value: s.avg, count: s.count, people: s.peopleCount }))), true);
-               Object.keys(st.deptTypeAveragesByType || {}).forEach(type => { const arr = st.deptTypeAveragesByType[type]; if (arr && arr.length) pushCard(400, `คะแนนเฉลี่ยแยกตามประเภทหน่วยงาน - ${type}`, '', barChartHTML(arr.map(s => ({ label: s.deptType, value: s.avg, count: s.count, people: s.peopleCount }))), true); });
-               Object.keys(st.deptAveragesByType || {}).forEach(type => { const arr = st.deptAveragesByType[type]; if (arr && arr.length) pushCard(400, `คะแนนเฉลี่ยแยกตามหน่วยงาน - ${type}`, '', barChartHTML(arr.map(s => ({ label: s.department, value: s.avg, count: s.count, people: s.peopleCount }))), true); });
+               // การ์ดกราฟแท่ง: ถ้าแท่งเยอะ (>10) การ์ดสูงขึ้น เพราะป้ายชื่อหมุนแนวตั้ง
+               const barCard = (title, sub, arr) => blocks.push({ h: arr.length > 10 ? 480 : 400, html: chartCardHTML(title, sub, barChartHTML(arr), true) });
+               if (chartData.byDeptType.length) barCard('คะแนนเฉลี่ยการปฏิบัติ แยกตามประเภทหน่วยงาน', 'IPD / OPD / กลุ่มงานให้บริการผู้ป่วย', chartData.byDeptType);
+               if (chartData.byType.length) barCard('คะแนนเฉลี่ยการปฏิบัติ แยกตามแบบประเมิน', 'เรียงจากมากไปน้อย', chartData.byType);
+               if (chartData.byMonth.length) blocks.push({ h: 340, html: chartCardHTML('แนวโน้มร้อยละเฉลี่ยรายเดือน', 'พัฒนาการการปฏิบัติตามช่วงเวลา', lineChartHTML(chartData.byMonth), false) });
+               if (st.typeAverages && st.typeAverages.length) barCard('คะแนนเฉลี่ยแยกตามประเภทแบบประเมิน', '', st.typeAverages.map(s => ({ label: s.type, value: s.avg, count: s.count, people: s.peopleCount })));
+               Object.keys(st.deptTypeAveragesByType || {}).forEach(type => { const arr = st.deptTypeAveragesByType[type]; if (arr && arr.length) barCard(`คะแนนเฉลี่ยแยกตามประเภทหน่วยงาน - ${type}`, '', arr.map(s => ({ label: s.deptType, value: s.avg, count: s.count, people: s.peopleCount }))); });
+               Object.keys(st.deptAveragesByType || {}).forEach(type => { const arr = st.deptAveragesByType[type]; if (arr && arr.length) barCard(`คะแนนเฉลี่ยแยกตามหน่วยงาน - ${type}`, '', arr.map(s => ({ label: s.department, value: s.avg, count: s.count, people: s.peopleCount }))); });
                const sigHtml = buildSignatureHtml(historySigners(summarySource));
                if (sigHtml) blocks.push({ h: 230, html: sigHtml });
                const html = buildChartPages("สรุปภาพรวมผลการประเมินมาตรฐาน IC", `โรงพยาบาลศรีสังวรสุโขทัย — ${scope}`, blocks);
