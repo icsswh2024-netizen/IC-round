@@ -129,6 +129,51 @@ function doPost(e) {
     }
 
     // ===================================================================
+    // [เพิ่มใหม่] 2.1 แอดมินแก้ไขข้อมูลทั่วไปของแถวเดียว (Update Single Record)
+    //   ค้นแถวจาก id ในคอลัมน์ JSON (ถ้าไม่เจอใช้วัน/เวลาสำรอง) แล้วอัปเดตเฉพาะคอลัมน์ข้อมูลทั่วไป
+    //   (ไม่แตะคะแนน/ผลรายข้อ) พร้อมอัปเดตคอลัมน์ JSON ให้ตรงกัน
+    // ===================================================================
+    if (data.action === 'update') {
+      var uTargetId = data.id ? data.id.toString() : "";
+      var uTargetTime = data.timestampStr || "";
+      var uData = sheet.getDataRange().getDisplayValues();
+      var uHead = uData[0];
+      function uCol(keyword) { for (var c = 0; c < uHead.length; c++) { if (uHead[c].toString().toLowerCase().indexOf(keyword.toLowerCase()) > -1) return c; } return -1; }
+      var uJson = -1, uTime = 0;
+      for (var c = 0; c < uHead.length; c++) {
+        var uh = uHead[c].toString().toLowerCase();
+        if (uh.indexOf('json') > -1 || uh.indexOf('ข้อมูลดิบ') > -1) uJson = c;
+        if (uh.indexOf('วัน') > -1 || uh.indexOf('เวลา') > -1) uTime = c;
+      }
+      if (uJson === -1) uJson = 9;
+      var cType = uCol('ประเภทแบบประเมิน'), cAssessor = uCol('ผู้ประเมิน'), cDeptType = uCol('ประเภทหน่วยงาน'), cDept = uCol('หน่วยงานที่รับ'), cNum = uCol('จำนวนผู้'), cRole = uCol('ตำแหน่ง');
+
+      for (var i = uData.length - 1; i >= 1; i--) {
+        var uMatch = false;
+        if (uJson > -1 && uData[i][uJson]) { try { var uRec = JSON.parse(uData[i][uJson]); if (uRec.id && uRec.id.toString() === uTargetId) uMatch = true; } catch (e) {} }
+        if (!uMatch && uTargetTime && uData[i][uTime] === uTargetTime) uMatch = true;
+        if (uMatch) {
+          var uRow = i + 1;
+          if (cType > -1) sheet.getRange(uRow, cType + 1).setValue(data.assessmentType);
+          if (cAssessor > -1) sheet.getRange(uRow, cAssessor + 1).setValue(data.assessorName);
+          if (cDeptType > -1) sheet.getRange(uRow, cDeptType + 1).setValue(data.deptType);
+          if (cDept > -1) sheet.getRange(uRow, cDept + 1).setValue(data.department);
+          if (cNum > -1) sheet.getRange(uRow, cNum + 1).setValue(data.numPeople);
+          if (cRole > -1 && data.evaluateeRole !== undefined) sheet.getRange(uRow, cRole + 1).setValue(data.evaluateeRole);
+          // ข้อชื่นชม/ข้อเสนอแนะ: หา-หรือ-สร้างคอลัมน์
+          var uHdrs = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+          var ci = uHdrs.indexOf('ข้อชื่นชม'); if (ci === -1) { uHdrs.push('ข้อชื่นชม'); ci = uHdrs.length - 1; sheet.getRange(1, ci + 1).setValue('ข้อชื่นชม').setFontWeight("bold").setBackground("#bbf7d0"); }
+          sheet.getRange(uRow, ci + 1).setValue(data.commendation || "");
+          var si = uHdrs.indexOf('ข้อเสนอแนะ'); if (si === -1) { uHdrs.push('ข้อเสนอแนะ'); si = uHdrs.length - 1; sheet.getRange(1, si + 1).setValue('ข้อเสนอแนะ').setFontWeight("bold").setBackground("#bbf7d0"); }
+          sheet.getRange(uRow, si + 1).setValue(data.suggestion || "");
+          if (uJson > -1 && data.fullDataJSON) sheet.getRange(uRow, uJson + 1).setValue(data.fullDataJSON);
+          return ContentService.createTextOutput(JSON.stringify({"status": "success"})).setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({"status": "not_found"})).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // ===================================================================
     // [ฟังก์ชันเดิมคงไว้] 3. สร้างหัวตารางพื้นฐานหากยังไม่มี
     // ===================================================================
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn() || 1).getValues()[0];
