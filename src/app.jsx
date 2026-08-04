@@ -3490,7 +3490,7 @@
       }
 
       return (
-        <div className="min-h-screen bg-slate-50 text-[#32355c] pb-24 text-lg">
+        <div className="min-h-screen bg-slate-50 text-[#32355c] pb-24 lg:pb-8 text-lg">
            <CustomPopup {...popupConfig} onClose={closePopup} />
            
            {/* PDF Preview Modal */}
@@ -3677,14 +3677,31 @@
            <nav className="bg-[#32355c] border-b-4 border-[#285c6c] text-white sticky top-0 z-50 shadow-xl print:hidden">
               <div className="max-w-7xl mx-auto px-6">
                  <div className="flex items-center justify-between h-20">
-                    <div className="flex items-center gap-4 font-black text-2xl hidden md:flex"><Activity className="w-8 h-8 text-[#16bba6]" /> ระบบกำกับติดตาม IC</div>
-                    <div className="flex gap-3 w-full md:w-auto justify-center">
+                    <div className="flex items-center gap-4 font-black text-xl md:text-2xl"><Activity className="w-8 h-8 text-[#16bba6]" /> ระบบกำกับติดตาม IC</div>
+                    <div className="hidden lg:flex gap-3 w-full md:w-auto justify-center">
                        <button onClick={() => setViewMode('department')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'department' ? 'bg-[#16bba6] text-white shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><FileText className="w-6 h-6" /> หน้าประเมิน</button>
                        <button onClick={() => setViewMode('hospital')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'hospital' ? 'bg-[#e9c460] text-[#32355c] shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><LayoutDashboard className="w-6 h-6" /> Dashboard</button>
                        <button onClick={() => setViewMode('icn')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'icn' ? 'bg-[#16bba6] text-white shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><Building2 className="w-6 h-6" /> การนิเทศ ICN</button>
                        <button onClick={() => setViewMode('history')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'history' ? 'bg-[#f1a164] text-white shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><Clock className="w-6 h-6" /> ประวัติ</button>
                     </div>
                  </div>
+              </div>
+           </nav>
+
+           {/* แถบเมนูล่างสำหรับมือถือ/ไอแพด (แสดงเฉพาะจอเล็กกว่า lg) */}
+           <nav className="fixed bottom-0 inset-x-0 z-50 bg-[#32355c] border-t-4 border-[#285c6c] shadow-[0_-4px_12px_rgba(0,0,0,0.25)] lg:hidden print:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+              <div className="grid grid-cols-4">
+                 {[
+                   { mode: 'department', label: 'หน้าประเมิน', Icon: FileText, active: 'text-[#16bba6]' },
+                   { mode: 'hospital', label: 'Dashboard', Icon: LayoutDashboard, active: 'text-[#e9c460]' },
+                   { mode: 'icn', label: 'นิเทศ ICN', Icon: Building2, active: 'text-[#16bba6]' },
+                   { mode: 'history', label: 'ประวัติ', Icon: Clock, active: 'text-[#f1a164]' },
+                 ].map(({ mode, label, Icon, active }) => (
+                   <button key={mode} onClick={() => setViewMode(mode)} className={`flex flex-col items-center justify-center gap-1 py-2.5 font-bold text-xs transition-colors ${viewMode === mode ? active : 'text-slate-300 hover:text-white'}`}>
+                      <Icon className="w-6 h-6" />
+                      <span className="leading-none whitespace-nowrap">{label}</span>
+                   </button>
+                 ))}
               </div>
            </nav>
 
