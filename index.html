@@ -2892,7 +2892,20 @@ function App() {
           const idxPerc = headers.findIndex(h => h.includes('ร้อยละ'));
           const idxRole = headers.findIndex(h => h.includes('ตำแหน่ง'));
           let idxJson = headers.findIndex(h => h.includes('json') || h.includes('ข้อมูลดิบ'));
-          if (idxJson === -1 && rows.length > 1) idxJson = rows[1].findIndex(c => typeof c === 'string' && c.trim().startsWith('{'));
+
+          // กันหัวตารางกับข้อมูลเลื่อนคอลัมน์ไม่ตรงกัน (เช่น มีคอลัมน์แทรก/เปลี่ยนชื่อหัวตาราง):
+          // ตรวจว่าคอลัมน์ JSON ที่อิงจากหัวตารางมีข้อมูล JSON จริงหรือไม่ ถ้าไม่ ให้ค้นหาตำแหน่งจากข้อมูลจริง
+          const _looksJson = c => typeof c === 'string' && c.trim().charAt(0) === '{' && c.includes('"');
+          if (rows.length > 1) {
+            const _headerColHasJson = idxJson >= 0 && rows.some((r, i) => i > 0 && Array.isArray(r) && _looksJson(r[idxJson]));
+            if (!_headerColHasJson) {
+              const sampleRow = rows.find((r, i) => i > 0 && Array.isArray(r) && r.some(_looksJson));
+              if (sampleRow) {
+                const di = sampleRow.findIndex(_looksJson);
+                if (di !== -1) idxJson = di;
+              }
+            }
+          }
           if (idxJson === -1) idxJson = headers.length - 1;
           const newRecords = [];
           for (let i = 1; i < rows.length; i++) {
