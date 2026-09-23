@@ -2,7 +2,7 @@
     const { useState, useMemo, useRef, useEffect } = React;
 
     // --- URL สำหรับ Google Script ล่าสุด ---
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzYqfYWNLM7cxN1fB9L8NoN3SuZHSuJsqf0DL4Ea72ge8A88cNL2zrY_7ecZvDlsv4B/exec"; 
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwkwyZsVJO58lOWq6oIBwJhsIrD_WYbvPRMFgOQjZHi-57U4xG45ss3ZE_hx8PB3nx3/exec";
 
     // --- SVG Icons Components ---
     const IconProps = { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" };
