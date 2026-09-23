@@ -147,6 +147,9 @@ function doPost(e) {
       }
       if (uJson === -1) uJson = 9;
       var cType = uCol('ประเภทแบบประเมิน'), cAssessor = uCol('ผู้ประเมิน'), cDeptType = uCol('ประเภทหน่วยงาน'), cDept = uCol('หน่วยงานที่รับ'), cNum = uCol('จำนวนผู้'), cRole = uCol('ตำแหน่ง');
+      // [กันหัวตารางเพี้ยน] โค้ด save เขียน "ประเภทแบบประเมิน" ที่คอลัมน์ B (ตำแหน่งที่ 2) เสมอ
+      // ถ้าหาไม่เจอตามชื่อหัว ให้ชี้ไปคอลัมน์ B แทน (กันไม่ให้สร้างคอลัมน์ซ้ำ/ข้ามการอัปเดต)
+      if (cType === -1) cType = 1;
 
       for (var i = uData.length - 1; i >= 1; i--) {
         var uMatch = false;
@@ -353,4 +356,94 @@ function doGet(e) {
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('แบบประเมินและกำกับติดตามมาตรฐาน IC')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// =====================================================================
+// [เครื่องมือล้างข้อมูลครั้งเดียว] normalizeSheetFromJson()
+//   ใช้แก้ปัญหา "หัวตาราง/ข้อมูลเลื่อนคอลัมน์" และ "ประเภทแบบประเมินกระจายหลายคอลัมน์"
+//   วิธีทำงาน: อ่าน JSON (แหล่งข้อมูลจริงที่ครบทุกแถว) มาสร้างคอลัมน์หลัก A–J ใหม่ให้ทุกแถวตรงกัน
+//   แล้วตั้งหัวตารางมาตรฐาน + ลบคอลัมน์ "ประเภทแบบประเมิน" ที่ซ้ำ
+//   *** สำรองชีตอัตโนมัติก่อนแก้เสมอ ***
+//   วิธีรัน: เปิด Apps Script editor -> เลือกฟังก์ชัน normalizeSheetFromJson -> กด Run
+// =====================================================================
+function normalizeSheetFromJson() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = findDataSheet_(ss);
+  if (!sheet) throw new Error('ไม่พบชีตข้อมูล (ไม่มีคอลัมน์ JSON) — ยกเลิก');
+
+  // 1) สำรองชีตก่อนเสมอ
+  var stamp = Utilities.formatDate(new Date(), 'GMT+7', 'yyyyMMdd_HHmmss');
+  sheet.copyTo(ss).setName(sheet.getName() + '_สำรอง_' + stamp);
+
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) throw new Error('ไม่มีข้อมูลให้จัด');
+
+  var looksJson = function (v) { return typeof v === 'string' && v.trim().charAt(0) === '{' && v.indexOf('"') > -1; };
+  var STD = ["วันที่/เวลา", "ประเภทแบบประเมิน", "ผู้ประเมิน", "ประเภทหน่วยงาน", "หน่วยงานที่รับการประเมิน", "จำนวนผู้ถูกประเมิน (คน)", "คะแนนเต็มรวม", "คะแนนที่ได้รวม", "ร้อยละเฉลี่ย", "ข้อมูลดิบ (JSON)"];
+
+  var fixed = 0, skipped = 0;
+  for (var r = 1; r < values.length; r++) {
+    var row = values[r];
+    if (!row || row.join('').trim() === '') continue;
+    // หา JSON ในแถวนี้ (ตำแหน่งอาจต่างกันในแต่ละแถว)
+    var jIdx = -1;
+    for (var c = 0; c < row.length; c++) { if (looksJson(row[c])) { jIdx = c; break; } }
+    if (jIdx === -1) { skipped++; continue; }
+    var rec;
+    try { rec = JSON.parse(row[jIdx]); } catch (e) { skipped++; continue; }
+    if (!rec || typeof rec !== 'object') { skipped++; continue; }
+
+    var gs = (rec.overallSummaryData && rec.overallSummaryData.grandSummary) || {};
+    var block = [
+      row[0] || rec.timestampStr || '',                                   // A วันที่/เวลา (คงค่าเดิม)
+      rec.assessmentType || '',                                           // B ประเภทแบบประเมิน
+      rec.assessorName || '',                                             // C ผู้ประเมิน
+      rec.deptType || '',                                                 // D ประเภทหน่วยงาน
+      rec.department || '',                                               // E หน่วยงานที่รับ
+      (rec.numPeople != null ? rec.numPeople : ''),                       // F จำนวนผู้ถูกประเมิน
+      (gs.fullScore != null ? gs.fullScore : ''),                         // G คะแนนเต็มรวม
+      (gs.earnedScore != null ? gs.earnedScore : ''),                     // H คะแนนที่ได้รวม
+      (gs.percentage != null ? gs.percentage : ''),                       // I ร้อยละเฉลี่ย
+      row[jIdx]                                                           // J ข้อมูลดิบ (JSON)
+    ];
+    sheet.getRange(r + 1, 1, 1, 10).setValues([block]);
+    // ถ้า JSON เดิมอยู่นอกบล็อก A–J (คอลัมน์ > J) ให้ล้างช่องเดิมกันซ้ำ
+    if (jIdx > 9) sheet.getRange(r + 1, jIdx + 1).setValue('');
+    fixed++;
+  }
+
+  // 2) ตั้งหัวตารางมาตรฐาน A–J
+  sheet.getRange(1, 1, 1, 10).setValues([STD]).setFontWeight('bold').setBackground('#e2e8f0');
+
+  // 3) ลบคอลัมน์ "ประเภทแบบประเมิน" ที่ซ้ำ (เฉพาะที่อยู่นอกคอลัมน์ B) — ลบจากขวาไปซ้าย
+  var lastCol = sheet.getLastColumn();
+  var hdr = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var removed = 0;
+  for (var c = lastCol - 1; c >= 10; c--) {
+    if (String(hdr[c]).trim() === 'ประเภทแบบประเมิน') { sheet.deleteColumn(c + 1); removed++; }
+  }
+
+  var msg = 'จัดข้อมูลสำเร็จ: แก้ ' + fixed + ' แถว, ข้าม ' + skipped + ' แถว (ไม่มี JSON), ลบคอลัมน์ซ้ำ ' + removed + ' คอลัมน์. ชีต: ' + sheet.getName() + ' (มีสำรอง _สำรอง_' + stamp + ')';
+  try { SpreadsheetApp.getUi().alert(msg); } catch (e) {}
+  Logger.log(msg);
+  return msg;
+}
+
+// หา "ชีตข้อมูล" อัตโนมัติ = ชีตแรกที่มีเซลล์เป็น JSON (ขึ้นต้นด้วย { )
+function findDataSheet_(ss) {
+  var sheets = ss.getSheets();
+  for (var s = 0; s < sheets.length; s++) {
+    var sh = sheets[s];
+    var lastRow = Math.min(sh.getLastRow(), 6);
+    var lastCol = sh.getLastColumn();
+    if (lastRow < 2 || lastCol < 1) continue;
+    var vals = sh.getRange(1, 1, lastRow, lastCol).getValues();
+    for (var r = 1; r < vals.length; r++) {
+      for (var c = 0; c < vals[r].length; c++) {
+        var v = vals[r][c];
+        if (typeof v === 'string' && v.trim().charAt(0) === '{' && v.indexOf('"') > -1) return sh;
+      }
+    }
+  }
+  return null;
 }
