@@ -7,6 +7,8 @@
     // --- SVG Icons Components ---
     const IconProps = { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" };
     const Activity = ({className}) => <svg className={className} {...IconProps}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>;
+    const Settings = ({className}) => <svg className={className} {...IconProps}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>;
+    const Save = ({className}) => <svg className={className} {...IconProps}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>;
     const Edit = ({className}) => <svg className={className} {...IconProps}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>;
     const Building2 = ({className}) => <svg className={className} {...IconProps}><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>;
     const User = ({className}) => <svg className={className} {...IconProps}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
@@ -408,7 +410,34 @@
       });
 
       const [isHistoryAuthenticated, setIsHistoryAuthenticated] = useState(false);
-      
+
+      // การตั้งค่าแอดมิน: รายชื่อ "หน่วยเสี่ยง" + สวิตช์ให้เฉลี่ยคะแนนรวมเฉพาะหน่วยเสี่ยง
+      const [appSettings, setAppSettings] = useState({ riskUnits: [], riskAvgEnabled: false });
+      const [isSavingSettings, setIsSavingSettings] = useState(false);
+      useEffect(() => {
+         (async () => {
+            let loaded = null;
+            try {
+               const res = await fetch(GOOGLE_SCRIPT_URL + "?action=getSettings");
+               const j = await res.json();
+               if (j && j.status === 'success' && j.data) loaded = j.data;
+            } catch (e) { /* backend เก่ายังไม่มี getSettings — ใช้ค่าจากเครื่องแทน */ }
+            if (!loaded) { try { const ls = localStorage.getItem('ic_app_settings'); if (ls) loaded = JSON.parse(ls); } catch (e) {} }
+            if (loaded) setAppSettings({ riskUnits: Array.isArray(loaded.riskUnits) ? loaded.riskUnits : [], riskAvgEnabled: !!loaded.riskAvgEnabled });
+         })();
+      }, []);
+      const saveAppSettings = async (next) => {
+         setIsSavingSettings(true);
+         setAppSettings(next);
+         try { localStorage.setItem('ic_app_settings', JSON.stringify(next)); } catch (e) {}
+         try {
+            if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
+               await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ settingsData: next }) });
+            }
+         } catch (e) { console.error("Error saving settings:", e); }
+         finally { setIsSavingSettings(false); }
+      };
+
       const [dynamicChecklists, setDynamicChecklists] = useState(null);
       const [isLoadingChecklists, setIsLoadingChecklists] = useState(true);
       const [isSyncingChecklist, setIsSyncingChecklist] = useState(false);
@@ -1905,6 +1934,90 @@
         )
       };
 
+      const SettingsView = () => {
+         const allDepts = useMemo(() => {
+            const s = new Set();
+            hospitalRecords.forEach(r => { if (r.department && r.department !== '-') s.add(String(r.department).trim()); });
+            (appSettings.riskUnits || []).forEach(d => s.add(d));
+            return Array.from(s).sort((a, b) => a.localeCompare(b, 'th'));
+         }, [hospitalRecords, appSettings.riskUnits]);
+
+         const [draftRisk, setDraftRisk] = useState(appSettings.riskUnits || []);
+         const [draftEnabled, setDraftEnabled] = useState(!!appSettings.riskAvgEnabled);
+         const [newDept, setNewDept] = useState("");
+         useEffect(() => { setDraftRisk(appSettings.riskUnits || []); setDraftEnabled(!!appSettings.riskAvgEnabled); }, [appSettings]);
+
+         const toggleDept = (d) => setDraftRisk(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+         const dirty = draftEnabled !== !!appSettings.riskAvgEnabled || JSON.stringify([...draftRisk].sort()) !== JSON.stringify([...(appSettings.riskUnits || [])].sort());
+
+         if (!isHistoryAuthenticated) {
+            return (
+               <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
+                  <Settings className="w-16 h-16 text-slate-300 mb-4" />
+                  <h2 className="text-2xl font-black text-[#285c6c] mb-2">ตั้งค่าระบบ (สำหรับแอดมิน)</h2>
+                  <p className="text-slate-500 font-medium mb-6">กรุณาเข้าสู่ระบบแอดมินที่หน้า "ประวัติ" ก่อน จึงจะตั้งค่าได้</p>
+                  <button onClick={() => setViewMode('history')} className="bg-[#285c6c] text-white px-6 py-3 rounded-xl font-bold shadow-md hover:bg-[#1f4653] flex items-center gap-2"><Clock className="w-5 h-5" /> ไปหน้าประวัติเพื่อเข้าสู่ระบบ</button>
+               </div>
+            );
+         }
+
+         return (
+            <div className="flex flex-col items-center w-full px-4">
+               <div className="w-full max-w-4xl bg-white rounded-3xl shadow-sm border border-gray-200 mt-8 mb-10 overflow-hidden">
+                  <div className="bg-gradient-to-r from-[#32355c] to-[#285c6c] text-white px-6 md:px-8 py-8">
+                     <div className="flex items-center gap-3"><Settings className="w-9 h-9 text-[#16bba6]" /><h1 className="text-2xl md:text-3xl font-black">ตั้งค่าระบบ (แอดมิน)</h1></div>
+                     <p className="text-slate-200 mt-2 font-medium">กำหนด "หน่วยเสี่ยง" สำหรับคิดค่าเฉลี่ยคะแนนรวมระดับโรงพยาบาล</p>
+                  </div>
+                  <div className="p-5 md:p-8 space-y-8">
+                     <div className="flex items-start justify-between gap-4 bg-slate-50 border-2 border-gray-200 rounded-2xl p-5">
+                        <div>
+                           <h3 className="font-black text-lg text-[#285c6c]">เฉลี่ยคะแนนรวมเฉพาะหน่วยเสี่ยง</h3>
+                           <p className="text-sm text-slate-500 font-medium mt-1">เมื่อเปิด: แดชบอร์ดจะคิดค่าเฉลี่ย/คะแนนรวมระดับโรงพยาบาล <b>เฉพาะหน่วยที่เลือกเป็นหน่วยเสี่ยง</b> เท่านั้น (หน่วยอื่นไม่นำมาเฉลี่ย)</p>
+                        </div>
+                        <button onClick={() => setDraftEnabled(v => !v)} className={`shrink-0 w-16 h-9 rounded-full transition-colors relative ${draftEnabled ? 'bg-[#16bba6]' : 'bg-gray-300'}`}>
+                           <span className={`absolute top-1 left-1 w-7 h-7 bg-white rounded-full shadow transition-transform ${draftEnabled ? 'translate-x-7' : ''}`}></span>
+                        </button>
+                     </div>
+
+                     <div>
+                        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                           <h3 className="font-black text-lg text-[#285c6c]">เลือกหน่วยเสี่ยง <span className="text-sm font-bold text-slate-400">({draftRisk.length} หน่วย)</span></h3>
+                           <div className="flex gap-2">
+                              <button onClick={() => setDraftRisk(allDepts.slice())} className="text-xs font-bold text-[#285c6c] bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg">เลือกทั้งหมด</button>
+                              <button onClick={() => setDraftRisk([])} className="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg">ล้าง</button>
+                           </div>
+                        </div>
+                        {allDepts.length === 0 ? (
+                           <p className="text-slate-400 font-medium py-6 text-center">ยังไม่มีรายชื่อหน่วยงาน (จะปรากฏเมื่อมีข้อมูลการประเมิน) — เพิ่มเองด้านล่างได้</p>
+                        ) : (
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {allDepts.map(d => (
+                                 <label key={d} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all font-bold ${draftRisk.includes(d) ? 'bg-[#16bba6]/10 border-[#16bba6] text-[#285c6c]' : 'bg-white border-gray-200 text-slate-600 hover:border-gray-300'}`}>
+                                    <input type="checkbox" checked={draftRisk.includes(d)} onChange={() => toggleDept(d)} className="w-5 h-5 accent-[#16bba6] shrink-0" />
+                                    <span className="truncate">{d}</span>
+                                 </label>
+                              ))}
+                           </div>
+                        )}
+                        <div className="flex gap-2 mt-4">
+                           <input value={newDept} onChange={e => setNewDept(e.target.value)} placeholder="เพิ่มชื่อหน่วยงานที่ยังไม่มีในรายการ..." className="flex-1 min-w-0 p-3 border-2 border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#16bba6] font-bold text-slate-700" />
+                           <button onClick={() => { const v = newDept.trim(); if (v && !draftRisk.includes(v)) setDraftRisk(prev => [...prev, v]); setNewDept(""); }} className="bg-[#285c6c] text-white px-5 rounded-xl font-bold shrink-0">เพิ่ม</button>
+                        </div>
+                     </div>
+
+                     <div className="flex items-center justify-end gap-3 pt-4 border-t-2 border-gray-100 flex-wrap">
+                        {dirty && <span className="text-sm font-bold text-amber-600">มีการเปลี่ยนแปลงที่ยังไม่บันทึก</span>}
+                        <button disabled={!dirty || isSavingSettings} onClick={() => saveAppSettings({ riskUnits: draftRisk, riskAvgEnabled: draftEnabled })} className={`px-7 py-3 rounded-xl font-black shadow-md flex items-center gap-2 ${(!dirty || isSavingSettings) ? 'bg-slate-300 text-white cursor-not-allowed' : 'bg-[#16bba6] text-white hover:bg-[#12a390]'}`}>
+                           {isSavingSettings ? <><Loader2 className="w-5 h-5 animate-spin" /> กำลังบันทึก...</> : <><Save className="w-5 h-5" /> บันทึกการตั้งค่า</>}
+                        </button>
+                     </div>
+                     <p className="text-xs text-slate-400 font-medium">* บันทึกลง Google Sheet (แท็บ "ตั้งค่า") เพื่อใช้ร่วมกันทุกเครื่อง — ต้อง deploy Code.gs ที่มี handler ตั้งค่าก่อน จึงจะซิงค์ข้ามเครื่องได้ (ระหว่างนี้ค่าถูกเก็บในเครื่องนี้ไว้ให้)</p>
+                  </div>
+               </div>
+            </div>
+         );
+      };
+
       const HospitalSummaryView = () => {
          const [dashType, setDashType] = useState(""); // เริ่มต้นที่ 'ไม่เลือก' (โหมดภาพรวมทุกมาตรฐาน) เสมอ
          const [filterYear, setFilterYear] = useState("all");
@@ -1952,6 +2065,7 @@
                 if (filterDept !== "all" && r.department !== filterDept) return false;
                 if (filterRole !== "all" && r.evaluateeRole !== filterRole) return false; 
                 if (filterAssessor !== "all" && r.assessorName !== filterAssessor) return false;
+                if (appSettings.riskAvgEnabled && appSettings.riskUnits.length > 0 && !appSettings.riskUnits.includes(r.department)) return false;
                 return true;
             });
             
@@ -2069,7 +2183,7 @@
             });
 
             return { records: currentRecords, totalPeople, totalDepts, aggSections, aggBundles, grandSummary, mappingToUse: mapping, keysToUse: keys, deptTypeAverages, deptAverages, checklist };
-         }, [hospitalRecords, dashType, filterYear, filterStartMonth, filterEndMonth, filterDeptType, filterDept, filterRole, filterAssessor, dynamicChecklists]);
+         }, [hospitalRecords, dashType, filterYear, filterStartMonth, filterEndMonth, filterDeptType, filterDept, filterRole, filterAssessor, dynamicChecklists, appSettings]);
 
          // --- รายการความเห็นการนิเทศ (ข้อชื่นชม/ข้อเสนอแนะ) ตามตัวกรอง Dashboard ---
          const commentRecords = useMemo(() => {
@@ -2136,6 +2250,7 @@
                 if (filterDept !== "all" && r.department !== filterDept) return false;
                 if (filterRole !== "all" && r.evaluateeRole !== filterRole) return false;
                 if (filterAssessor !== "all" && r.assessorName !== filterAssessor) return false;
+                if (appSettings.riskAvgEnabled && appSettings.riskUnits.length > 0 && !appSettings.riskUnits.includes(r.department)) return false;
                 return true;
             });
 
@@ -2182,7 +2297,7 @@
             const deptList = Object.values(deptStats).sort((a, b) => a.department.localeCompare(b.department, 'th'));
             
             return { standards, deptList, totalByStandard, grandTotal };
-         }, [hospitalRecords, filterYear, filterStartMonth, filterEndMonth, filterDeptType, filterDept, filterRole, filterAssessor, dynamicChecklists]);
+         }, [hospitalRecords, filterYear, filterStartMonth, filterEndMonth, filterDeptType, filterDept, filterRole, filterAssessor, dynamicChecklists, appSettings]);
 
          // --- ข้อมูลสรุปแยกเฉพาะมาตรฐาน 16-17 (แสดงแยกตามหน่วยงานและตำแหน่ง) ---
          const roleCrossTabStats = useMemo(() => {
@@ -2210,6 +2325,7 @@
                 if (filterDept !== "all" && r.department !== filterDept) return false;
                 if (filterRole !== "all" && r.evaluateeRole !== filterRole) return false;
                 if (filterAssessor !== "all" && r.assessorName !== filterAssessor) return false;
+                if (appSettings.riskAvgEnabled && appSettings.riskUnits.length > 0 && !appSettings.riskUnits.includes(r.department)) return false;
                 return true;
             });
 
@@ -2247,7 +2363,7 @@
             });
 
             return { standards: targetStandards, deptRoleList, totalByStandard, grandTotal };
-         }, [hospitalRecords, filterYear, filterStartMonth, filterEndMonth, filterDeptType, filterDept, filterRole, filterAssessor, dynamicChecklists]);
+         }, [hospitalRecords, filterYear, filterStartMonth, filterEndMonth, filterDeptType, filterDept, filterRole, filterAssessor, dynamicChecklists, appSettings]);
 
          // --- ฟังก์ชันดึงค่าเกณฑ์ประเมิน (สามารถแก้ไขจำนวนเจ้าหน้าที่ได้ที่นี่) ---
          const getCriteriaTarget = (stdIndex) => {
@@ -2490,6 +2606,12 @@
                           <div className="flex items-center gap-3"><Building2 className="w-8 h-8 text-[#285c6c]"/> ภาพรวมระดับโรงพยาบาล</div>
                           <div className="text-2xl md:text-3xl bg-[#e9c460] text-[#32355c] px-8 py-2.5 rounded-xl shadow-md print:bg-white print:text-black inline-block w-max uppercase tracking-wider border-2 border-[#b48c20]/30 print:border-gray-400">{dashType ? `แบบประเมิน ${dashType}` : 'สรุปภาพรวมจำนวนผู้รับการประเมิน (ทุกมาตรฐาน)'}</div>
                        </div>
+                       {appSettings.riskAvgEnabled && appSettings.riskUnits.length > 0 && (
+                          <div className="bg-amber-50 border-2 border-amber-300 text-amber-900 rounded-2xl px-5 py-3 mb-6 font-bold text-base flex items-center gap-3 pdf-no-break print:bg-amber-50">
+                             <Settings className="w-6 h-6 shrink-0 text-amber-600" />
+                             <span>กำลังคิดค่าเฉลี่ย/คะแนนรวม <u>เฉพาะหน่วยเสี่ยง {appSettings.riskUnits.length} หน่วย</u> ตามการตั้งค่าแอดมิน (หน่วยอื่นไม่ถูกนำมาเฉลี่ย)</span>
+                          </div>
+                       )}
                        {dashType && (<>
                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10 pdf-no-break">
                           <div className="bg-white p-6 rounded-3xl border-2 border-gray-200 shadow-sm text-center print:border-gray-300"><span className="block text-slate-500 text-sm mb-2 font-bold uppercase tracking-wide">จำนวนหน่วยงาน</span><span className="text-5xl font-black text-[#314566]">{totalDepts}</span></div>
@@ -3810,6 +3932,7 @@
                        <button onClick={() => setViewMode('hospital')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'hospital' ? 'bg-[#e9c460] text-[#32355c] shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><LayoutDashboard className="w-6 h-6" /> Dashboard</button>
                        <button onClick={() => setViewMode('icn')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'icn' ? 'bg-[#16bba6] text-white shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><Building2 className="w-6 h-6" /> การนิเทศ ICN</button>
                        <button onClick={() => setViewMode('history')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'history' ? 'bg-[#f1a164] text-white shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><Clock className="w-6 h-6" /> ประวัติ</button>
+                       <button onClick={() => setViewMode('settings')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'settings' ? 'bg-[#16bba6] text-white shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><Settings className="w-6 h-6" /> ตั้งค่า</button>
                     </div>
                  </div>
               </div>
@@ -3817,22 +3940,23 @@
 
            {/* แถบเมนูล่างสำหรับมือถือ/ไอแพด (แสดงเฉพาะจอเล็กกว่า lg) */}
            <nav className="fixed bottom-0 inset-x-0 z-50 bg-[#32355c] border-t-4 border-[#285c6c] shadow-[0_-4px_12px_rgba(0,0,0,0.25)] lg:hidden print:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-              <div className="grid grid-cols-4">
+              <div className="grid grid-cols-5">
                  {[
                    { mode: 'department', label: 'หน้าประเมิน', Icon: FileText, active: 'text-[#16bba6]' },
                    { mode: 'hospital', label: 'Dashboard', Icon: LayoutDashboard, active: 'text-[#e9c460]' },
                    { mode: 'icn', label: 'นิเทศ ICN', Icon: Building2, active: 'text-[#16bba6]' },
                    { mode: 'history', label: 'ประวัติ', Icon: Clock, active: 'text-[#f1a164]' },
+                   { mode: 'settings', label: 'ตั้งค่า', Icon: Settings, active: 'text-[#16bba6]' },
                  ].map(({ mode, label, Icon, active }) => (
-                   <button key={mode} onClick={() => setViewMode(mode)} className={`flex flex-col items-center justify-center gap-1 py-2.5 font-bold text-xs transition-colors ${viewMode === mode ? active : 'text-slate-300 hover:text-white'}`}>
-                      <Icon className="w-6 h-6" />
+                   <button key={mode} onClick={() => setViewMode(mode)} className={`flex flex-col items-center justify-center gap-1 py-2.5 px-0.5 font-bold text-[11px] transition-colors ${viewMode === mode ? active : 'text-slate-300 hover:text-white'}`}>
+                      <Icon className="w-5 h-5" />
                       <span className="leading-none whitespace-nowrap">{label}</span>
                    </button>
                  ))}
               </div>
            </nav>
 
-           {viewMode === 'hospital' ? <HospitalSummaryView /> : viewMode === 'icn' ? <ICNView /> : viewMode === 'history' ? <HistoryView /> : (
+           {viewMode === 'settings' ? <SettingsView /> : viewMode === 'hospital' ? <HospitalSummaryView /> : viewMode === 'icn' ? <ICNView /> : viewMode === 'history' ? <HistoryView /> : (
               <div className="flex flex-col items-center w-full">
                 <div id="report-content" className="w-full max-w-7xl bg-white pb-10 print:bg-white rounded-3xl mt-8 shadow-sm border border-gray-200">
                   <header className="bg-gradient-to-r from-[#32355c] to-[#285c6c] rounded-t-3xl text-white shadow-md print:bg-transparent print:text-black print:border-none print:shadow-none relative">
