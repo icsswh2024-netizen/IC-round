@@ -1938,6 +1938,14 @@
         )
       };
 
+      // แถบสลับเมนูย่อยในกลุ่ม "แอดมิน": ประวัติ / ตั้งค่า (แสดงหลังเข้าสู่ระบบ)
+      const AdminTabs = () => (
+         <div className="flex gap-2 mb-6 bg-slate-100 p-1.5 rounded-2xl w-max max-w-full overflow-x-auto print:hidden">
+            <button onClick={() => setViewMode('history')} className={`px-6 py-2.5 rounded-xl font-bold text-base flex items-center gap-2 transition-all whitespace-nowrap ${viewMode === 'history' ? 'bg-[#285c6c] text-white shadow' : 'text-slate-600 hover:bg-slate-200'}`}><Clock className="w-5 h-5" /> ประวัติ</button>
+            <button onClick={() => setViewMode('settings')} className={`px-6 py-2.5 rounded-xl font-bold text-base flex items-center gap-2 transition-all whitespace-nowrap ${viewMode === 'settings' ? 'bg-[#285c6c] text-white shadow' : 'text-slate-600 hover:bg-slate-200'}`}><Settings className="w-5 h-5" /> ตั้งค่า</button>
+         </div>
+      );
+
       const SettingsView = () => {
          const typeList = useMemo(() => {
             const s = new Set();
@@ -1980,7 +1988,8 @@
 
          return (
             <div className="flex flex-col items-center w-full px-4">
-               <div className="w-full max-w-4xl bg-white rounded-3xl shadow-sm border border-gray-200 mt-8 mb-10 overflow-hidden">
+               <div className="w-full max-w-4xl mt-8"><AdminTabs /></div>
+               <div className="w-full max-w-4xl bg-white rounded-3xl shadow-sm border border-gray-200 mb-10 overflow-hidden">
                   <div className="bg-gradient-to-r from-[#32355c] to-[#285c6c] text-white px-6 md:px-8 py-8">
                      <div className="flex items-center gap-3"><Settings className="w-9 h-9 text-[#16bba6]" /><h1 className="text-2xl md:text-3xl font-black">ตั้งค่าระบบ (แอดมิน)</h1></div>
                      <p className="text-slate-200 mt-2 font-medium">กำหนด "หน่วยเสี่ยง" <b>แยกตามแต่ละแบบประเมิน</b> สำหรับคิดค่าเฉลี่ยคะแนนรวมระดับโรงพยาบาล</p>
@@ -3560,8 +3569,9 @@
 
          return (
            <div className="flex flex-col items-center w-full min-h-[80vh]">
-              <div className="w-full max-w-7xl bg-white pb-10 px-4 py-8 rounded-3xl mt-6 shadow-sm border border-gray-200">
-                 
+              <div className="w-full max-w-7xl mt-6"><AdminTabs /></div>
+              <div className="w-full max-w-7xl bg-white pb-10 px-4 py-8 rounded-3xl shadow-sm border border-gray-200">
+
                  <div className="bg-slate-50 p-6 rounded-2xl shadow-sm border border-gray-200 mb-10 print:hidden">
                     <div className="flex items-center gap-3 mb-5 text-slate-800 font-bold text-lg border-b pb-4"><FilterIcon className="w-6 h-6 text-[#16bba6]" /> ตัวกรองข้อมูลประวัติ</div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-5">
@@ -3999,8 +4009,7 @@
                        <button onClick={() => setViewMode('department')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'department' ? 'bg-[#16bba6] text-white shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><FileText className="w-6 h-6" /> หน้าประเมิน</button>
                        <button onClick={() => setViewMode('hospital')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'hospital' ? 'bg-[#e9c460] text-[#32355c] shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><LayoutDashboard className="w-6 h-6" /> Dashboard</button>
                        <button onClick={() => setViewMode('icn')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'icn' ? 'bg-[#16bba6] text-white shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><Building2 className="w-6 h-6" /> การนิเทศ ICN</button>
-                       <button onClick={() => setViewMode('history')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'history' ? 'bg-[#f1a164] text-white shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><Clock className="w-6 h-6" /> ประวัติ</button>
-                       <button onClick={() => setViewMode('settings')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${viewMode === 'settings' ? 'bg-[#16bba6] text-white shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><Settings className="w-6 h-6" /> ตั้งค่า</button>
+                       <button onClick={() => setViewMode('history')} className={`flex-1 sm:flex-none px-6 py-3 rounded-xl text-lg font-bold transition-all flex items-center justify-center gap-3 ${(viewMode === 'history' || viewMode === 'settings') ? 'bg-[#f1a164] text-white shadow-lg' : 'text-slate-300 hover:bg-[#285c6c] hover:text-white'}`}><User className="w-6 h-6" /> แอดมิน</button>
                     </div>
                  </div>
               </div>
@@ -4008,19 +4017,20 @@
 
            {/* แถบเมนูล่างสำหรับมือถือ/ไอแพด (แสดงเฉพาะจอเล็กกว่า lg) */}
            <nav className="fixed bottom-0 inset-x-0 z-50 bg-[#32355c] border-t-4 border-[#285c6c] shadow-[0_-4px_12px_rgba(0,0,0,0.25)] lg:hidden print:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-              <div className="grid grid-cols-5">
+              <div className="grid grid-cols-4">
                  {[
                    { mode: 'department', label: 'หน้าประเมิน', Icon: FileText, active: 'text-[#16bba6]' },
                    { mode: 'hospital', label: 'Dashboard', Icon: LayoutDashboard, active: 'text-[#e9c460]' },
                    { mode: 'icn', label: 'นิเทศ ICN', Icon: Building2, active: 'text-[#16bba6]' },
-                   { mode: 'history', label: 'ประวัติ', Icon: Clock, active: 'text-[#f1a164]' },
-                   { mode: 'settings', label: 'ตั้งค่า', Icon: Settings, active: 'text-[#16bba6]' },
-                 ].map(({ mode, label, Icon, active }) => (
-                   <button key={mode} onClick={() => setViewMode(mode)} className={`flex flex-col items-center justify-center gap-1 py-2.5 px-0.5 font-bold text-[11px] transition-colors ${viewMode === mode ? active : 'text-slate-300 hover:text-white'}`}>
-                      <Icon className="w-5 h-5" />
+                   { mode: 'history', label: 'แอดมิน', Icon: User, active: 'text-[#f1a164]', group: ['history', 'settings'] },
+                 ].map(({ mode, label, Icon, active, group }) => {
+                   const isActive = group ? group.includes(viewMode) : viewMode === mode;
+                   return (
+                   <button key={mode} onClick={() => setViewMode(mode)} className={`flex flex-col items-center justify-center gap-1 py-2.5 px-0.5 font-bold text-[11px] transition-colors ${isActive ? active : 'text-slate-300 hover:text-white'}`}>
+                      <Icon className="w-6 h-6" />
                       <span className="leading-none whitespace-nowrap">{label}</span>
                    </button>
-                 ))}
+                 );})}
               </div>
            </nav>
 
