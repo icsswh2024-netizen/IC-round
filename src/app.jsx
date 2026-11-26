@@ -411,8 +411,8 @@
 
       const [isHistoryAuthenticated, setIsHistoryAuthenticated] = useState(false);
 
-      // การตั้งค่าแอดมิน: รายชื่อ "หน่วยเสี่ยง" + สวิตช์ให้เฉลี่ยคะแนนรวมเฉพาะหน่วยเสี่ยง
-      const [appSettings, setAppSettings] = useState({ riskUnits: [], riskAvgEnabled: false });
+      // การตั้งค่าแอดมิน: "หน่วยเสี่ยง" แยกตามแบบประเมิน (riskUnitsByType) + สวิตช์เฉลี่ยเฉพาะหน่วยเสี่ยง
+      const [appSettings, setAppSettings] = useState({ riskAvgEnabled: false, riskUnitsByType: {} });
       const [isSavingSettings, setIsSavingSettings] = useState(false);
       useEffect(() => {
          (async () => {
@@ -423,7 +423,11 @@
                if (j && j.status === 'success' && j.data) loaded = j.data;
             } catch (e) { /* backend เก่ายังไม่มี getSettings — ใช้ค่าจากเครื่องแทน */ }
             if (!loaded) { try { const ls = localStorage.getItem('ic_app_settings'); if (ls) loaded = JSON.parse(ls); } catch (e) {} }
-            if (loaded) setAppSettings({ riskUnits: Array.isArray(loaded.riskUnits) ? loaded.riskUnits : [], riskAvgEnabled: !!loaded.riskAvgEnabled });
+            if (loaded) {
+               let byType = (loaded.riskUnitsByType && typeof loaded.riskUnitsByType === 'object') ? loaded.riskUnitsByType : {};
+               // รองรับค่าเวอร์ชันเก่า (riskUnits เป็น list เดียว) — ไม่ย้ายอัตโนมัติ ให้แอดมินตั้งใหม่รายแบบประเมิน
+               setAppSettings({ riskAvgEnabled: !!loaded.riskAvgEnabled, riskUnitsByType: byType });
+            }
          })();
       }, []);
       const saveAppSettings = async (next) => {
@@ -1935,20 +1939,33 @@
       };
 
       const SettingsView = () => {
-         const allDepts = useMemo(() => {
+         const typeList = useMemo(() => {
             const s = new Set();
-            hospitalRecords.forEach(r => { if (r.department && r.department !== '-') s.add(String(r.department).trim()); });
-            (appSettings.riskUnits || []).forEach(d => s.add(d));
-            return Array.from(s).sort((a, b) => a.localeCompare(b, 'th'));
-         }, [hospitalRecords, appSettings.riskUnits]);
+            if (dynamicChecklists) Object.keys(dynamicChecklists).forEach(t => s.add(t));
+            hospitalRecords.forEach(r => { if (r.assessmentType && r.assessmentType !== '-') s.add(String(r.assessmentType).trim()); });
+            return Array.from(s);
+         }, [dynamicChecklists, hospitalRecords]);
 
-         const [draftRisk, setDraftRisk] = useState(appSettings.riskUnits || []);
          const [draftEnabled, setDraftEnabled] = useState(!!appSettings.riskAvgEnabled);
+         const [draftByType, setDraftByType] = useState(() => JSON.parse(JSON.stringify(appSettings.riskUnitsByType || {})));
+         const [selType, setSelType] = useState("");
          const [newDept, setNewDept] = useState("");
-         useEffect(() => { setDraftRisk(appSettings.riskUnits || []); setDraftEnabled(!!appSettings.riskAvgEnabled); }, [appSettings]);
+         useEffect(() => { setDraftEnabled(!!appSettings.riskAvgEnabled); setDraftByType(JSON.parse(JSON.stringify(appSettings.riskUnitsByType || {}))); }, [appSettings]);
+         useEffect(() => { if (!selType && typeList.length) setSelType(typeList[0]); }, [typeList, selType]);
 
-         const toggleDept = (d) => setDraftRisk(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
-         const dirty = draftEnabled !== !!appSettings.riskAvgEnabled || JSON.stringify([...draftRisk].sort()) !== JSON.stringify([...(appSettings.riskUnits || [])].sort());
+         const selected = draftByType[selType] || [];
+         const deptsForType = useMemo(() => {
+            const s = new Set();
+            hospitalRecords.forEach(r => { if (r.assessmentType === selType && r.department && r.department !== '-') s.add(String(r.department).trim()); });
+            (draftByType[selType] || []).forEach(d => s.add(d));
+            return Array.from(s).sort((a, b) => a.localeCompare(b, 'th'));
+         }, [hospitalRecords, selType, draftByType]);
+
+         const setForType = (arr) => setDraftByType(prev => ({ ...prev, [selType]: arr }));
+         const toggleDept = (d) => setForType(selected.includes(d) ? selected.filter(x => x !== d) : [...selected, d]);
+         const normalize = (o) => { const r = {}; Object.keys(o || {}).forEach(k => { const a = (o[k] || []).slice().sort(); if (a.length) r[k] = a; }); return JSON.stringify(r); };
+         const dirty = draftEnabled !== !!appSettings.riskAvgEnabled || normalize(draftByType) !== normalize(appSettings.riskUnitsByType);
+         const doSave = () => { const cleaned = {}; Object.keys(draftByType).forEach(k => { if ((draftByType[k] || []).length) cleaned[k] = draftByType[k]; }); saveAppSettings({ riskAvgEnabled: draftEnabled, riskUnitsByType: cleaned }); };
 
          if (!isHistoryAuthenticated) {
             return (
@@ -1966,48 +1983,83 @@
                <div className="w-full max-w-4xl bg-white rounded-3xl shadow-sm border border-gray-200 mt-8 mb-10 overflow-hidden">
                   <div className="bg-gradient-to-r from-[#32355c] to-[#285c6c] text-white px-6 md:px-8 py-8">
                      <div className="flex items-center gap-3"><Settings className="w-9 h-9 text-[#16bba6]" /><h1 className="text-2xl md:text-3xl font-black">ตั้งค่าระบบ (แอดมิน)</h1></div>
-                     <p className="text-slate-200 mt-2 font-medium">กำหนด "หน่วยเสี่ยง" สำหรับคิดค่าเฉลี่ยคะแนนรวมระดับโรงพยาบาล</p>
+                     <p className="text-slate-200 mt-2 font-medium">กำหนด "หน่วยเสี่ยง" <b>แยกตามแต่ละแบบประเมิน</b> สำหรับคิดค่าเฉลี่ยคะแนนรวมระดับโรงพยาบาล</p>
                   </div>
                   <div className="p-5 md:p-8 space-y-8">
                      <div className="flex items-start justify-between gap-4 bg-slate-50 border-2 border-gray-200 rounded-2xl p-5">
                         <div>
                            <h3 className="font-black text-lg text-[#285c6c]">เฉลี่ยคะแนนรวมเฉพาะหน่วยเสี่ยง</h3>
-                           <p className="text-sm text-slate-500 font-medium mt-1">เมื่อเปิด: แดชบอร์ดจะคิดค่าเฉลี่ย/คะแนนรวมระดับโรงพยาบาล <b>เฉพาะหน่วยที่เลือกเป็นหน่วยเสี่ยง</b> เท่านั้น (หน่วยอื่นไม่นำมาเฉลี่ย)</p>
+                           <p className="text-sm text-slate-500 font-medium mt-1">เมื่อเปิด: แดชบอร์ดจะคิดค่าเฉลี่ย/คะแนนรวม <b>เฉพาะหน่วยที่เลือกเป็นหน่วยเสี่ยงของแบบประเมินนั้น ๆ</b> (หน่วยที่ไม่ได้เลือก = ไม่ต้องประเมิน ไม่ถูกนำมาเฉลี่ย) — แบบประเมินที่ยังไม่ได้ตั้งหน่วยเสี่ยง จะนับทุกหน่วยตามปกติ</p>
                         </div>
                         <button onClick={() => setDraftEnabled(v => !v)} className={`shrink-0 w-16 h-9 rounded-full transition-colors relative ${draftEnabled ? 'bg-[#16bba6]' : 'bg-gray-300'}`}>
                            <span className={`absolute top-1 left-1 w-7 h-7 bg-white rounded-full shadow transition-transform ${draftEnabled ? 'translate-x-7' : ''}`}></span>
                         </button>
                      </div>
 
+                     {/* เลือกแบบประเมิน */}
                      <div>
-                        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                           <h3 className="font-black text-lg text-[#285c6c]">เลือกหน่วยเสี่ยง <span className="text-sm font-bold text-slate-400">({draftRisk.length} หน่วย)</span></h3>
-                           <div className="flex gap-2">
-                              <button onClick={() => setDraftRisk(allDepts.slice())} className="text-xs font-bold text-[#285c6c] bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg">เลือกทั้งหมด</button>
-                              <button onClick={() => setDraftRisk([])} className="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg">ล้าง</button>
-                           </div>
-                        </div>
-                        {allDepts.length === 0 ? (
-                           <p className="text-slate-400 font-medium py-6 text-center">ยังไม่มีรายชื่อหน่วยงาน (จะปรากฏเมื่อมีข้อมูลการประเมิน) — เพิ่มเองด้านล่างได้</p>
+                        <h3 className="font-black text-lg text-[#285c6c] mb-3">เลือกแบบประเมิน</h3>
+                        {typeList.length === 0 ? (
+                           <p className="text-slate-400 font-medium py-4 text-center">ยังไม่มีรายการแบบประเมิน (รอซิงค์ข้อมูล)</p>
                         ) : (
-                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {allDepts.map(d => (
-                                 <label key={d} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all font-bold ${draftRisk.includes(d) ? 'bg-[#16bba6]/10 border-[#16bba6] text-[#285c6c]' : 'bg-white border-gray-200 text-slate-600 hover:border-gray-300'}`}>
-                                    <input type="checkbox" checked={draftRisk.includes(d)} onChange={() => toggleDept(d)} className="w-5 h-5 accent-[#16bba6] shrink-0" />
-                                    <span className="truncate">{d}</span>
-                                 </label>
-                              ))}
+                           <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+                              {typeList.map(t => {
+                                 const cnt = (draftByType[t] || []).length;
+                                 return (
+                                    <button key={t} onClick={() => setSelType(t)} className={`shrink-0 px-4 py-2.5 rounded-xl font-bold text-sm border-2 transition-all flex items-center gap-2 ${selType === t ? 'bg-[#285c6c] text-white border-[#285c6c] shadow-md' : 'bg-white text-slate-600 border-gray-200 hover:border-gray-300'}`}>
+                                       {t}
+                                       {cnt > 0 && <span className={`text-[11px] px-2 py-0.5 rounded-full ${selType === t ? 'bg-white/20' : 'bg-[#16bba6]/15 text-[#238885]'}`}>{cnt}</span>}
+                                    </button>
+                                 );
+                              })}
                            </div>
                         )}
-                        <div className="flex gap-2 mt-4">
-                           <input value={newDept} onChange={e => setNewDept(e.target.value)} placeholder="เพิ่มชื่อหน่วยงานที่ยังไม่มีในรายการ..." className="flex-1 min-w-0 p-3 border-2 border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#16bba6] font-bold text-slate-700" />
-                           <button onClick={() => { const v = newDept.trim(); if (v && !draftRisk.includes(v)) setDraftRisk(prev => [...prev, v]); setNewDept(""); }} className="bg-[#285c6c] text-white px-5 rounded-xl font-bold shrink-0">เพิ่ม</button>
-                        </div>
                      </div>
+
+                     {/* หน่วยเสี่ยงของแบบประเมินที่เลือก */}
+                     {selType && (
+                        <div>
+                           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                              <h3 className="font-black text-lg text-[#285c6c]">หน่วยเสี่ยงของ "{selType}" <span className="text-sm font-bold text-slate-400">({selected.length} หน่วย)</span></h3>
+                              <div className="flex gap-2">
+                                 <button onClick={() => setForType(deptsForType.slice())} className="text-xs font-bold text-[#285c6c] bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg">เลือกทั้งหมด</button>
+                                 <button onClick={() => setForType([])} className="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg">ล้าง</button>
+                              </div>
+                           </div>
+                           {deptsForType.length === 0 ? (
+                              <p className="text-slate-400 font-medium py-6 text-center">ยังไม่มีหน่วยงานของแบบประเมินนี้ (จะปรากฏเมื่อมีข้อมูลการประเมิน) — เพิ่มเองด้านล่างได้</p>
+                           ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                 {deptsForType.map(d => (
+                                    <label key={d} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all font-bold ${selected.includes(d) ? 'bg-[#16bba6]/10 border-[#16bba6] text-[#285c6c]' : 'bg-white border-gray-200 text-slate-600 hover:border-gray-300'}`}>
+                                       <input type="checkbox" checked={selected.includes(d)} onChange={() => toggleDept(d)} className="w-5 h-5 accent-[#16bba6] shrink-0" />
+                                       <span className="truncate">{d}</span>
+                                    </label>
+                                 ))}
+                              </div>
+                           )}
+                           <div className="flex gap-2 mt-4">
+                              <input value={newDept} onChange={e => setNewDept(e.target.value)} placeholder={`เพิ่มหน่วยงานให้ "${selType}"...`} className="flex-1 min-w-0 p-3 border-2 border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#16bba6] font-bold text-slate-700" />
+                              <button onClick={() => { const v = newDept.trim(); if (v && !selected.includes(v)) setForType([...selected, v]); setNewDept(""); }} className="bg-[#285c6c] text-white px-5 rounded-xl font-bold shrink-0">เพิ่ม</button>
+                           </div>
+                        </div>
+                     )}
+
+                     {/* สรุปการตั้งค่าแต่ละแบบประเมิน */}
+                     {Object.keys(draftByType).some(k => (draftByType[k] || []).length) && (
+                        <div className="bg-slate-50 border-2 border-gray-200 rounded-2xl p-4">
+                           <h4 className="font-black text-sm text-slate-500 mb-2 uppercase tracking-wide">สรุปหน่วยเสี่ยงที่ตั้งไว้</h4>
+                           <div className="flex flex-wrap gap-2">
+                              {typeList.filter(t => (draftByType[t] || []).length).map(t => (
+                                 <span key={t} className="text-xs font-bold bg-white border border-gray-200 text-slate-600 px-3 py-1.5 rounded-lg"><b className="text-[#285c6c]">{t}</b>: {(draftByType[t] || []).length} หน่วย</span>
+                              ))}
+                           </div>
+                        </div>
+                     )}
 
                      <div className="flex items-center justify-end gap-3 pt-4 border-t-2 border-gray-100 flex-wrap">
                         {dirty && <span className="text-sm font-bold text-amber-600">มีการเปลี่ยนแปลงที่ยังไม่บันทึก</span>}
-                        <button disabled={!dirty || isSavingSettings} onClick={() => saveAppSettings({ riskUnits: draftRisk, riskAvgEnabled: draftEnabled })} className={`px-7 py-3 rounded-xl font-black shadow-md flex items-center gap-2 ${(!dirty || isSavingSettings) ? 'bg-slate-300 text-white cursor-not-allowed' : 'bg-[#16bba6] text-white hover:bg-[#12a390]'}`}>
+                        <button disabled={!dirty || isSavingSettings} onClick={doSave} className={`px-7 py-3 rounded-xl font-black shadow-md flex items-center gap-2 ${(!dirty || isSavingSettings) ? 'bg-slate-300 text-white cursor-not-allowed' : 'bg-[#16bba6] text-white hover:bg-[#12a390]'}`}>
                            {isSavingSettings ? <><Loader2 className="w-5 h-5 animate-spin" /> กำลังบันทึก...</> : <><Save className="w-5 h-5" /> บันทึกการตั้งค่า</>}
                         </button>
                      </div>
@@ -2065,7 +2117,7 @@
                 if (filterDept !== "all" && r.department !== filterDept) return false;
                 if (filterRole !== "all" && r.evaluateeRole !== filterRole) return false; 
                 if (filterAssessor !== "all" && r.assessorName !== filterAssessor) return false;
-                if (appSettings.riskAvgEnabled && appSettings.riskUnits.length > 0 && !appSettings.riskUnits.includes(r.department)) return false;
+                if (appSettings.riskAvgEnabled) { const _ru = (appSettings.riskUnitsByType || {})[r.assessmentType]; if (_ru && _ru.length > 0 && !_ru.includes(r.department)) return false; }
                 return true;
             });
             
@@ -2250,7 +2302,7 @@
                 if (filterDept !== "all" && r.department !== filterDept) return false;
                 if (filterRole !== "all" && r.evaluateeRole !== filterRole) return false;
                 if (filterAssessor !== "all" && r.assessorName !== filterAssessor) return false;
-                if (appSettings.riskAvgEnabled && appSettings.riskUnits.length > 0 && !appSettings.riskUnits.includes(r.department)) return false;
+                if (appSettings.riskAvgEnabled) { const _ru = (appSettings.riskUnitsByType || {})[r.assessmentType]; if (_ru && _ru.length > 0 && !_ru.includes(r.department)) return false; }
                 return true;
             });
 
@@ -2325,7 +2377,7 @@
                 if (filterDept !== "all" && r.department !== filterDept) return false;
                 if (filterRole !== "all" && r.evaluateeRole !== filterRole) return false;
                 if (filterAssessor !== "all" && r.assessorName !== filterAssessor) return false;
-                if (appSettings.riskAvgEnabled && appSettings.riskUnits.length > 0 && !appSettings.riskUnits.includes(r.department)) return false;
+                if (appSettings.riskAvgEnabled) { const _ru = (appSettings.riskUnitsByType || {})[r.assessmentType]; if (_ru && _ru.length > 0 && !_ru.includes(r.department)) return false; }
                 return true;
             });
 
@@ -2606,10 +2658,14 @@
                           <div className="flex items-center gap-3"><Building2 className="w-8 h-8 text-[#285c6c]"/> ภาพรวมระดับโรงพยาบาล</div>
                           <div className="text-2xl md:text-3xl bg-[#e9c460] text-[#32355c] px-8 py-2.5 rounded-xl shadow-md print:bg-white print:text-black inline-block w-max uppercase tracking-wider border-2 border-[#b48c20]/30 print:border-gray-400">{dashType ? `แบบประเมิน ${dashType}` : 'สรุปภาพรวมจำนวนผู้รับการประเมิน (ทุกมาตรฐาน)'}</div>
                        </div>
-                       {appSettings.riskAvgEnabled && appSettings.riskUnits.length > 0 && (
+                       {appSettings.riskAvgEnabled && (
                           <div className="bg-amber-50 border-2 border-amber-300 text-amber-900 rounded-2xl px-5 py-3 mb-6 font-bold text-base flex items-center gap-3 pdf-no-break print:bg-amber-50">
                              <Settings className="w-6 h-6 shrink-0 text-amber-600" />
-                             <span>กำลังคิดค่าเฉลี่ย/คะแนนรวม <u>เฉพาะหน่วยเสี่ยง {appSettings.riskUnits.length} หน่วย</u> ตามการตั้งค่าแอดมิน (หน่วยอื่นไม่ถูกนำมาเฉลี่ย)</span>
+                             <span>{dashType
+                                ? (((appSettings.riskUnitsByType || {})[dashType] || []).length > 0
+                                   ? <>กำลังคิดค่าเฉลี่ย/คะแนนรวม <u>เฉพาะหน่วยเสี่ยง {((appSettings.riskUnitsByType || {})[dashType] || []).length} หน่วย</u> ของแบบประเมิน {dashType} (หน่วยอื่นไม่ถูกนำมาเฉลี่ย)</>
+                                   : <>แบบประเมิน {dashType} <u>ยังไม่ได้กำหนดหน่วยเสี่ยง</u> จึงนับทุกหน่วยตามปกติ (ตั้งได้ที่เมนู "ตั้งค่า")</>)
+                                : <>คิดค่าเฉลี่ย/คะแนนรวม <u>เฉพาะหน่วยเสี่ยงที่กำหนดไว้ในแต่ละแบบประเมิน</u> ตามการตั้งค่าแอดมิน</>}</span>
                           </div>
                        )}
                        {dashType && (<>
