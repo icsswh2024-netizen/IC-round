@@ -362,12 +362,12 @@ function doGet(e) {
   if (e.parameter.action === 'getSettings') {
     try {
       var setSheet = ss.getSheetByName("ตั้งค่า");
-      var out = { riskUnits: [], riskAvgEnabled: false };
+      var out = { riskAvgEnabled: false, riskUnitsByType: {} };
       if (setSheet) {
         var svals = setSheet.getDataRange().getValues();
         for (var i = 0; i < svals.length; i++) {
           if (svals[i][0] === 'appSettings' && svals[i][1]) {
-            try { var o = JSON.parse(svals[i][1]); if (o) { out.riskUnits = Array.isArray(o.riskUnits) ? o.riskUnits : []; out.riskAvgEnabled = !!o.riskAvgEnabled; } } catch (e) {}
+            try { var o = JSON.parse(svals[i][1]); if (o && typeof o === 'object') out = o; } catch (e) {}
           }
         }
       }
