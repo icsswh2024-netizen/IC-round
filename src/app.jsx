@@ -1544,9 +1544,15 @@
           else showPopup({ title: 'ดึงข้อมูลจาก Cloud', message: 'ระบบจะดึงประวัติการประเมินจาก Google Sheet ทุกแถวมาทับข้อมูลเดิมในเครื่องนี้ ต้องการดำเนินการต่อหรือไม่?', type: 'confirm', onConfirm: proceedFetch });
       };
 
-      useEffect(() => { if (viewMode === 'hospital') handleFetchBackup(true, true); }, [viewMode]);
-      useEffect(() => { if (viewMode === 'history' && isHistoryAuthenticated) handleFetchBackup(true, true); }, [viewMode, isHistoryAuthenticated]);
-      useEffect(() => { if (viewMode === 'icn') handleFetchBackup(true, true); }, [viewMode]);
+      // ดึงข้อมูลจาก Cloud อัตโนมัติ "ครั้งเดียว" ตอนเข้าหน้าที่ต้องใช้ข้อมูล — ป้องกันการรีเฟรชซ้ำ
+      // ที่ทำให้หน้ารีเซ็ต (remount) จนแท็บย่อย/ตัวกรองในหน้าประวัติ "เด้ง" ระหว่างใช้งาน
+      // (ถ้าต้องการข้อมูลล่าสุดอีกครั้ง ใช้ปุ่ม "ดึงข้อมูลจาก Cloud" ในหน้าประวัติ)
+      const didAutoFetchRef = useRef(false);
+      useEffect(() => {
+         if (didAutoFetchRef.current) return;
+         const needsData = viewMode === 'hospital' || viewMode === 'icn' || (viewMode === 'history' && isHistoryAuthenticated);
+         if (needsData) { didAutoFetchRef.current = true; handleFetchBackup(true, true); }
+      }, [viewMode, isHistoryAuthenticated]);
 
       const allPersonScores = useMemo(() => {
         const scoresArray = [];
