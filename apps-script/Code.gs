@@ -62,6 +62,19 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify({"status": "success"})).setMimeType(ContentService.MimeType.JSON);
     }
 
+    // ===================================================================
+    // [เพิ่มใหม่] บันทึกการตั้งค่าแอดมิน (หน่วยเสี่ยง + สวิตช์เฉลี่ยเฉพาะหน่วยเสี่ยง) ลงแท็บ "ตั้งค่า"
+    //   ส่งมาในรูป { settingsData: {...} } โดยไม่มี action เพื่อให้โค้ดเวอร์ชันเก่า "เมิน" ทิ้ง (ไม่ปนลง ชีต1)
+    // ===================================================================
+    if (data.settingsData) {
+      var setSheet = ss.getSheetByName("ตั้งค่า");
+      if (!setSheet) { setSheet = ss.insertSheet("ตั้งค่า"); }
+      setSheet.clearContents();
+      setSheet.getRange(1, 1, 1, 2).setValues([["key", "value (JSON)"]]).setFontWeight("bold").setBackground("#e2e8f0");
+      setSheet.getRange(2, 1, 1, 2).setValues([["appSettings", JSON.stringify(data.settingsData)]]);
+      return ContentService.createTextOutput(JSON.stringify({"status": "success"})).setMimeType(ContentService.MimeType.JSON);
+    }
+
     // ระบบตรวจสอบ Fail-safe: สกัดกั้นแถวขยะที่มีแต่วันที่ว่างเปล่าไหลเข้าตาราง
     if (!data.action && !data.assessmentType && !data.department && !data.fullDataJSON) {
         return ContentService.createTextOutput(JSON.stringify({"status": "ignored", "message": "Blocked empty row"})).setMimeType(ContentService.MimeType.JSON);
@@ -343,6 +356,27 @@ function doGet(e) {
   // ===================================================================
   // [ฟังก์ชันเดิมคงไว้ ปรับปรุงล็อกแท็บ] ดึงข้อมูลประวัติเพื่อแสดงผลในหน้าเว็บ
   // ===================================================================
+  // ===================================================================
+  // [เพิ่มใหม่] อ่านการตั้งค่าแอดมินจากแท็บ "ตั้งค่า"
+  // ===================================================================
+  if (e.parameter.action === 'getSettings') {
+    try {
+      var setSheet = ss.getSheetByName("ตั้งค่า");
+      var out = { riskUnits: [], riskAvgEnabled: false };
+      if (setSheet) {
+        var svals = setSheet.getDataRange().getValues();
+        for (var i = 0; i < svals.length; i++) {
+          if (svals[i][0] === 'appSettings' && svals[i][1]) {
+            try { var o = JSON.parse(svals[i][1]); if (o) { out.riskUnits = Array.isArray(o.riskUnits) ? o.riskUnits : []; out.riskAvgEnabled = !!o.riskAvgEnabled; } } catch (e) {}
+          }
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({"status": "success", "data": out})).setMimeType(ContentService.MimeType.JSON);
+    } catch (error) {
+      return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": error.toString()})).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   if (e.parameter.action === 'getData') {
     try {
       var sheet = ss.getSheetByName("ชีต1") || ss.getSheets()[0];
