@@ -3234,10 +3234,15 @@
          // แหล่งข้อมูลของสรุปภาพรวม+กราฟ แยกตามแท็บ: 'summary' = ประเมินตนเอง (ไม่รวม ICN), 'summaryICN' = เฉพาะ ICN
          const summarySource = useMemo(() => {
             const isICN = (r) => String(r.assessorName || '').trim().toLowerCase() === 'icn';
-            if (historyTab === 'summaryICN') return filteredRecords.filter(isICN);
-            if (historyTab === 'summary') return filteredRecords.filter(r => !isICN(r));
-            return filteredRecords;
-         }, [filteredRecords, historyTab]);
+            // ให้สรุป/กราฟ/รายข้อ สอดคล้องกับแดชบอร์ด: ถ้าเปิดโหมดหน่วยเสี่ยง ให้กรองเฉพาะหน่วยเสี่ยงของแต่ละแบบประเมิน
+            let base = filteredRecords;
+            if (appSettings.riskAvgEnabled) {
+               base = base.filter(r => { const _ru = (appSettings.riskUnitsByType || {})[r.assessmentType]; return !(_ru && _ru.length > 0 && !_ru.includes(r.department)); });
+            }
+            if (historyTab === 'summaryICN') return base.filter(isICN);
+            if (historyTab === 'summary') return base.filter(r => !isICN(r));
+            return base;
+         }, [filteredRecords, historyTab, appSettings]);
 
          const summaryStats = useMemo(() => {
             if (summarySource.length === 0) return null;
@@ -3596,6 +3601,13 @@
                     </div>
 
                     <div className="hidden print:block mb-6 text-base text-gray-600 font-bold">ข้อมูลอัปเดต ณ วันที่ {new Date().toLocaleString('th-TH')} น.</div>
+
+                    {historyTab !== 'records' && appSettings.riskAvgEnabled && (
+                       <div className="bg-amber-50 border-2 border-amber-300 text-amber-900 rounded-2xl px-5 py-3 mb-6 font-bold text-sm md:text-base flex items-center gap-3">
+                          <Settings className="w-5 h-5 shrink-0 text-amber-600" />
+                          <span>สรุป/กราฟนี้คิด <u>เฉพาะหน่วยเสี่ยงที่กำหนดไว้ในแต่ละแบบประเมิน</u> (ให้ตรงกับแดชบอร์ด) — ดูข้อมูลครบทุกหน่วยได้ที่แท็บ "รายการบันทึก" หรือปิดโหมดหน่วยเสี่ยงที่เมนู "ตั้งค่า"</span>
+                       </div>
+                    )}
 
                     {historyTab === 'records' && (
                     <div className="overflow-x-auto rounded-xl border border-gray-200">
