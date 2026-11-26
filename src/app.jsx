@@ -3214,6 +3214,49 @@
             };
          }, [summarySource]);
 
+         // สรุปภาพรวม "รายข้อ": รวมปฏิบัติ/ไม่ปฏิบัติ/NA ของแต่ละข้อจากทุก record ที่กรองอยู่ แล้วคิดร้อยละ (NA ไม่นับในตัวหาร)
+         const itemSummary = useMemo(() => {
+            // lookup ข้อความรายข้อ/ชื่อหมวด จากแบบประเมินจริง (dynamicChecklists)
+            const lookup = {};
+            if (dynamicChecklists) Object.keys(dynamicChecklists).forEach(type => {
+               lookup[type] = { sections: {}, items: {} };
+               (dynamicChecklists[type] || []).forEach(sec => {
+                  lookup[type].sections[String(sec.id)] = sec.title || '';
+                  (sec.items || []).forEach(it => { lookup[type].items[String(it.id)] = it.text || ''; });
+               });
+            });
+            const typeMap = {};
+            summarySource.forEach(r => {
+               const type = r.assessmentType || 'ไม่ระบุ';
+               const secs = r.overallSummaryData?.aggSectionScores || [];
+               if (!secs.length) return;
+               if (!typeMap[type]) typeMap[type] = { type, count: 0, sections: {} };
+               typeMap[type].count += 1;
+               secs.forEach(sec => {
+                  const sid = String(sec.id);
+                  if (!typeMap[type].sections[sid]) typeMap[type].sections[sid] = { id: sid, title: sec.title || (lookup[type] && lookup[type].sections[sid]) || '', items: {} };
+                  else if (!typeMap[type].sections[sid].title && sec.title) typeMap[type].sections[sid].title = sec.title;
+                  (sec.items || []).forEach(it => {
+                     const iid = String(it.id);
+                     const acc = typeMap[type].sections[sid].items[iid] || (typeMap[type].sections[sid].items[iid] = { id: iid, done: 0, notDone: 0, na: 0 });
+                     acc.done += parseInt(it.done) || 0;
+                     acc.notDone += parseInt(it.notDone) || 0;
+                     acc.na += parseInt(it.na) || 0;
+                  });
+               });
+            });
+            return Object.values(typeMap).map(t => {
+               const sections = Object.values(t.sections).map(sec => {
+                  const items = Object.values(sec.items).map(it => {
+                     const denom = it.done + it.notDone;
+                     return { ...it, text: (lookup[t.type] && lookup[t.type].items[it.id]) || '', denom, percent: denom > 0 ? (it.done / denom) * 100 : null };
+                  }).sort((a, b) => (parseFloat(a.id) || 0) - (parseFloat(b.id) || 0));
+                  return { id: sec.id, title: sec.title || (lookup[t.type] && lookup[t.type].sections[sec.id]) || ('หมวด ' + sec.id), items };
+               }).sort((a, b) => (parseFloat(a.id) || 0) - (parseFloat(b.id) || 0));
+               return { type: t.type, count: t.count, sections };
+            }).sort((a, b) => a.type.localeCompare(b.type, 'th'));
+         }, [summarySource, dynamicChecklists]);
+
          const getHistoryExcelData = () => {
              const wsData = [];
              wsData.push(["ประวัติการบันทึกการประเมินมาตรฐาน IC", "โรงพยาบาลศรีสังวรสุโขทัย"]);
@@ -3277,6 +3320,24 @@
                const html = buildChartPages("สรุปภาพรวมผลการประเมินมาตรฐาน IC", `โรงพยาบาลศรีสังวรสุโขทัย — ${scope}`, blocks);
                const fnamePrefix = historyTab === 'summaryICN' ? 'สรุปภาพรวม_ICN' : 'สรุปภาพรวม_ประเมินตนเอง';
                setPdfPreviewState({ isOpen: true, htmlContent: html, filename: `${fnamePrefix}_${new Date().getTime()}.pdf` });
+               return;
+            }
+
+            if (historyTab === 'items') {
+               if (!itemSummary.length) { showPopup({ title: 'ไม่มีข้อมูล', message: 'ยังไม่มีข้อมูลสำหรับสรุปรายข้อตามเงื่อนไขที่เลือก', type: 'info' }); return; }
+               const wsData = [];
+               wsData.push(["สรุปผลการประเมินรายข้อ มาตรฐาน IC", "โรงพยาบาลศรีสังวรสุโขทัย"]);
+               wsData.push([]);
+               wsData.push(["แบบประเมิน", "หมวด", "ข้อ", "รายการประเมิน", "ปฏิบัติ", "ไม่ปฏิบัติ", "NA", "ร้อยละ"]);
+               itemSummary.forEach(t => {
+                  t.sections.forEach(sec => {
+                     sec.items.forEach(it => {
+                        wsData.push([t.type, sec.title, it.id, it.text || ('ข้อ ' + it.id), it.done, it.notDone, it.na, it.percent === null ? 'NA ทั้งหมด' : fmtPct(it.percent) + '%']);
+                     });
+                  });
+               });
+               const html = buildHTMLFromData(wsData, "สรุปผลการประเมินรายข้อ มาตรฐาน IC", 'โรงพยาบาลศรีสังวรสุโขทัย', buildSignatureHtml(historySigners(summarySource)));
+               setPdfPreviewState({ isOpen: true, htmlContent: html, filename: `สรุปรายข้อ_${new Date().getTime()}.pdf` });
                return;
             }
 
@@ -3353,6 +3414,7 @@
                        <button onClick={() => setHistoryTab('records')} className={`px-6 py-3 rounded-xl font-bold text-base flex items-center gap-2 transition-all ${historyTab === 'records' ? 'bg-[#285c6c] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><Clock className="w-5 h-5" /> รายการบันทึก <span className={`text-xs px-2 py-0.5 rounded-full ${historyTab === 'records' ? 'bg-white/20' : 'bg-slate-200'}`}>{filteredRecords.length}</span></button>
                        <button onClick={() => setHistoryTab('summary')} className={`px-6 py-3 rounded-xl font-bold text-base flex items-center gap-2 transition-all ${historyTab === 'summary' ? 'bg-[#285c6c] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><PieChart className="w-5 h-5" /> สรุปภาพรวม (ประเมินตนเอง)</button>
                        <button onClick={() => setHistoryTab('summaryICN')} className={`px-6 py-3 rounded-xl font-bold text-base flex items-center gap-2 transition-all ${historyTab === 'summaryICN' ? 'bg-[#285c6c] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><Building2 className="w-5 h-5" /> สรุปภาพรวม ICN</button>
+                       <button onClick={() => setHistoryTab('items')} className={`px-6 py-3 rounded-xl font-bold text-base flex items-center gap-2 transition-all ${historyTab === 'items' ? 'bg-[#285c6c] text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}><FileText className="w-5 h-5" /> สรุปรายข้อ</button>
                     </div>
 
                     <div className="hidden print:block mb-6 text-base text-gray-600 font-bold">ข้อมูลอัปเดต ณ วันที่ {new Date().toLocaleString('th-TH')} น.</div>
@@ -3387,6 +3449,62 @@
                           </tbody>
                        </table>
                     </div>
+                    )}
+
+                    {historyTab === 'items' && (
+                       itemSummary.length === 0 ? (
+                          <div className="text-center py-16 text-slate-400 font-medium text-lg">ยังไม่มีข้อมูลสำหรับสรุปรายข้อ (ปรับตัวกรอง หรือดึงข้อมูลจาก Cloud)</div>
+                       ) : (
+                          <div className="space-y-8">
+                             <p className="text-sm text-slate-500 font-medium -mt-2 print:hidden">ร้อยละการปฏิบัติของแต่ละข้อ = ปฏิบัติ ÷ (ปฏิบัติ + ไม่ปฏิบัติ) โดยไม่นับ NA — รวมจากทุกรายการที่กรองอยู่</p>
+                             {itemSummary.map(t => (
+                                <div key={t.type} className="rounded-2xl border-2 border-gray-200 overflow-hidden pdf-no-break break-inside-avoid">
+                                   <div className="bg-[#285c6c] text-white px-5 py-3 font-black text-lg flex items-center justify-between print:bg-[#285c6c] print:text-white">
+                                      <span>{t.type}</span>
+                                      <span className="text-sm font-bold bg-white/15 px-3 py-1 rounded-full">{t.count} ครั้ง</span>
+                                   </div>
+                                   <div className="overflow-x-auto">
+                                      <table className="w-full text-left border-collapse min-w-[640px]">
+                                         <thead>
+                                            <tr className="bg-slate-100 text-slate-700 text-sm border-b-2 border-gray-300 print:bg-gray-200 print:text-black">
+                                               <th className="p-3 font-bold w-14 text-center">ข้อ</th>
+                                               <th className="p-3 font-bold">รายการประเมิน</th>
+                                               <th className="p-3 font-bold text-center w-20">ปฏิบัติ</th>
+                                               <th className="p-3 font-bold text-center w-20">ไม่ปฏิบัติ</th>
+                                               <th className="p-3 font-bold text-center w-14">NA</th>
+                                               <th className="p-3 font-bold text-right w-44">ร้อยละการปฏิบัติ</th>
+                                            </tr>
+                                         </thead>
+                                         <tbody>
+                                            {t.sections.flatMap(sec => [
+                                               <tr key={'h-' + sec.id} className="bg-slate-50"><td colSpan="6" className="px-3 py-2 font-black text-[#285c6c] text-sm print:text-black">{sec.title}</td></tr>,
+                                               ...sec.items.map(it => (
+                                                  <tr key={sec.id + '-' + it.id} className="border-b border-gray-100 text-sm hover:bg-slate-50 print:text-black">
+                                                     <td className="p-3 text-center font-bold text-slate-500">{it.id}</td>
+                                                     <td className="p-3 text-slate-800 print:text-black">{it.text || ('ข้อ ' + it.id)}</td>
+                                                     <td className="p-3 text-center font-bold text-green-700">{it.done}</td>
+                                                     <td className="p-3 text-center font-bold text-rose-600">{it.notDone}</td>
+                                                     <td className="p-3 text-center text-slate-400">{it.na}</td>
+                                                     <td className="p-3">
+                                                        {it.percent === null ? (
+                                                           <div className="text-right text-slate-400 font-bold text-xs">NA ทั้งหมด</div>
+                                                        ) : (
+                                                           <div className="flex items-center gap-2 justify-end">
+                                                              <div className="h-2.5 rounded-full bg-gray-200 overflow-hidden flex-1 max-w-[120px] print:border print:border-gray-300"><div style={{ width: it.percent + '%', background: scoreHex(it.percent) }} className="h-full rounded-full"></div></div>
+                                                              <span className="font-black w-16 text-right" style={{ color: scoreHex(it.percent) }}>{fmtPct(it.percent)}%</span>
+                                                           </div>
+                                                        )}
+                                                     </td>
+                                                  </tr>
+                                               ))
+                                            ])}
+                                         </tbody>
+                                      </table>
+                                   </div>
+                                </div>
+                             ))}
+                          </div>
+                       )
                     )}
 
                     {(historyTab === 'summary' || historyTab === 'summaryICN') && (!summaryStats || summaryStats.totalRecords === 0) && (
