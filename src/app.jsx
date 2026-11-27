@@ -2636,12 +2636,26 @@
 
          return (
             <div className="flex flex-col items-center w-full">
-               <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200 mt-8 mb-4 print:hidden w-full max-w-7xl mx-auto px-4">
+               <div className="w-full max-w-7xl mx-auto mt-8 px-4 flex flex-col lg:flex-row gap-5 items-start">
+                  {/* ซ้าย: เลือกแบบประเมิน */}
+                  <aside className="w-full lg:w-64 shrink-0 print:hidden">
+                     <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-4 lg:sticky lg:top-24">
+                        <h3 className="font-black text-[#285c6c] text-base mb-3 flex items-center gap-2 px-1"><LayoutDashboard className="w-5 h-5 text-[#16bba6]" /> เลือกแบบประเมิน</h3>
+                        <div className="flex flex-col gap-1.5 max-h-[60vh] overflow-y-auto pr-1">
+                           <button onClick={() => setDashType("")} className={`text-left px-3 py-2.5 rounded-xl font-bold text-sm transition-all ${dashType === '' ? 'bg-[#285c6c] text-white shadow' : 'text-slate-600 hover:bg-slate-100'}`}>📊 ภาพรวมทุกมาตรฐาน</button>
+                           {dynamicChecklists && Object.keys(dynamicChecklists).map((k, index) => (
+                              <button key={k} onClick={() => setDashType(k)} className={`text-left px-3 py-2.5 rounded-xl font-bold text-sm transition-all ${dashType === k ? 'bg-[#285c6c] text-white shadow' : 'text-slate-600 hover:bg-slate-100'}`}>{index < 6 ? '👩‍⚕️' : '🏥'} {index + 1}. {k}</button>
+                           ))}
+                        </div>
+                     </div>
+                  </aside>
+                  {/* ขวา: ตัวกรอง + ผลการประเมิน */}
+                  <div className="flex-1 min-w-0 w-full">
+               <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200 mb-4 print:hidden w-full">
                   <div className="flex items-center gap-3 mb-5 text-slate-800 font-bold text-lg border-b pb-4">
                       <FilterIcon className="w-6 h-6 text-[#16bba6]" /> ตัวกรองข้อมูล Dashboard
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-5">
-                      <div className="col-span-2 sm:col-span-2 lg:col-span-1"><label className="block text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wide">ชื่อแบบประเมิน</label><select className="w-full p-3 border-2 border-gray-200 rounded-xl text-base font-bold text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-gray-50 transition-colors shadow-sm" value={dashType} onChange={(e) => setDashType(e.target.value)}><option value="">ไม่เลือก</option>{dynamicChecklists && Object.keys(dynamicChecklists).map((k, index) => <option key={k} value={k}>{index < 6 ? '👩‍⚕️' : '🏥'} {index + 1}. {k}</option>)}</select></div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-5">
                       <div><label className="block text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wide">ปี (พ.ศ.)</label><select className="w-full p-3 border-2 border-gray-200 rounded-xl text-base font-bold text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-white transition-colors shadow-sm" value={filterYear} onChange={(e) => setFilterYear(e.target.value)}><option value="all">ทุกปี</option>{filterOptions.years.map(y => <option key={y} value={y}>{parseInt(y) + 543}</option>)}</select></div>
                       <div><label className="block text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wide">ตั้งแต่เดือน</label><select className="w-full p-3 border-2 border-gray-200 rounded-xl text-base font-bold text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-white transition-colors shadow-sm" value={filterStartMonth} onChange={(e) => setFilterStartMonth(e.target.value)}><option value="all">ทุกเดือน</option><option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option><option value="4">เมษายน</option><option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option><option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option><option value="9">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option></select></div>
                       <div><label className="block text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wide">ถึงเดือน</label><select className="w-full p-3 border-2 border-gray-200 rounded-xl text-base font-bold text-[#32355c] outline-none focus:ring-2 focus:ring-[#16bba6] bg-white transition-colors shadow-sm" value={filterEndMonth} onChange={(e) => setFilterEndMonth(e.target.value)}><option value="all">ทุกเดือน</option><option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option><option value="4">เมษายน</option><option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option><option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option><option value="9">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option></select></div>
@@ -2661,7 +2675,7 @@
                      <div className="bg-[#16bba6]/15 text-[#238885] p-4 rounded-2xl shrink-0 self-start"><LayoutDashboard className="w-10 h-10" /></div>
                      <div className="flex-1">
                         <h3 className="text-xl md:text-2xl font-black text-[#285c6c] mb-1">โปรดเลือกแบบประเมินเพื่อดูผลการประเมิน</h3>
-                        <p className="text-slate-500 font-medium">เลือก <b className="text-[#285c6c]">"ชื่อแบบประเมิน"</b> ที่ช่องตัวกรองด้านบน เพื่อแสดงคะแนนรวม ค่าเฉลี่ย และสรุป Bundle ของแบบประเมินนั้น ๆ — ด้านล่างนี้เป็นภาพรวมจำนวนผู้รับการประเมินทุกมาตรฐาน</p>
+                        <p className="text-slate-500 font-medium">เลือกแบบประเมินจากรายการ <b className="text-[#285c6c]">ด้านซ้าย</b> เพื่อแสดงคะแนนรวม ค่าเฉลี่ย และสรุป Bundle ของแบบประเมินนั้น ๆ — ด้านล่างนี้เป็นภาพรวมจำนวนผู้รับการประเมินทุกมาตรฐาน</p>
                      </div>
                   </div>
                )}
@@ -3022,6 +3036,8 @@
                      <button onClick={handleGenerateHospitalPDF} disabled={isGeneratingPDF} className={`flex items-center justify-center gap-2 px-8 py-3.5 text-white rounded-xl font-bold text-lg transition-colors shadow-md hover:shadow-lg ${isGeneratingPDF ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#f1a164] hover:bg-[#de8f55]'}`}><Loader2 className={`w-6 h-6 animate-spin ${!isGeneratingPDF && 'hidden'}`} /><FileText className={`w-6 h-6 ${isGeneratingPDF && 'hidden'}`} /> แสดงตัวอย่าง PDF</button>
                   </div>
                )}
+                  </div>
+               </div>
             </div>
          );
       }
