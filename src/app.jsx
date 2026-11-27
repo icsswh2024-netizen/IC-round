@@ -2656,6 +2656,16 @@
                   </div>
                </div>
 
+               {!dashType && (
+                  <div className="w-full max-w-7xl mx-auto mt-6 bg-gradient-to-r from-[#285c6c]/5 to-[#16bba6]/10 border-2 border-[#16bba6]/40 rounded-3xl px-6 py-7 flex flex-col md:flex-row md:items-center gap-5 shadow-sm print:hidden">
+                     <div className="bg-[#16bba6]/15 text-[#238885] p-4 rounded-2xl shrink-0 self-start"><LayoutDashboard className="w-10 h-10" /></div>
+                     <div className="flex-1">
+                        <h3 className="text-xl md:text-2xl font-black text-[#285c6c] mb-1">โปรดเลือกแบบประเมินเพื่อดูผลการประเมิน</h3>
+                        <p className="text-slate-500 font-medium">เลือก <b className="text-[#285c6c]">"ชื่อแบบประเมิน"</b> ที่ช่องตัวกรองด้านบน เพื่อแสดงคะแนนรวม ค่าเฉลี่ย และสรุป Bundle ของแบบประเมินนั้น ๆ — ด้านล่างนี้เป็นภาพรวมจำนวนผู้รับการประเมินทุกมาตรฐาน</p>
+                     </div>
+                  </div>
+               )}
+
                {(!dashType ? (crossTabStats.deptList.length === 0 && roleCrossTabStats.deptRoleList.length === 0) : records.length === 0) ? (
                   <div className="text-center py-24 bg-white rounded-3xl shadow-sm border border-gray-200 w-full max-w-7xl mx-auto mt-6 px-4">
                      <h2 className="text-3xl font-black text-slate-800 mb-4">{dashType ? `ไม่พบข้อมูลการประเมิน ${dashType}` : 'ยังไม่มีข้อมูลการประเมินในระบบ'}</h2>
