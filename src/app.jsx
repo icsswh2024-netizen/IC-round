@@ -1526,7 +1526,10 @@
                                   aggSectionScores: [], aggBundleScores: { OVERALL: { percent: parseFloat(idxPerc >= 0 ? row[idxPerc] : 0) || 0, earned: 0, total: 0 } }
                               };
                           }
-                          if (record.assessmentType === '-' && record.department === '-') continue;
+                          // ข้ามแถวขยะ (ไม่มีข้อมูลจริง): ทั้งแบบประเมินและหน่วยงานว่าง/เป็น '-' และไม่มีผลรายข้อ
+                          const _empty = (v) => !v || String(v).trim() === '' || String(v).trim() === '-';
+                          const _hasItems = !!(record.overallSummaryData && record.overallSummaryData.aggSectionScores && record.overallSummaryData.aggSectionScores.length);
+                          if (_empty(record.assessmentType) && _empty(record.department) && !_hasItems) continue;
                           newRecords.push(record);
                       }
                       setHospitalRecords(newRecords);
